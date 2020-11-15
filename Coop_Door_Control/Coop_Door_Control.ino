@@ -29,7 +29,7 @@
 
 #include <WiFi.h>                                         // for webserver
 
-boolean debugOn = false;                                  // debugging flag
+boolean debugOn = true;                                  // debugging flag
 boolean superDebugOn = false;                             // verbose debugging does cause a delay in button push response
 boolean debugWithDelay = false;                           // adds 10 second delay to verbose debugging - causes issues with debouncing!
 
@@ -84,6 +84,8 @@ const int coopDoorClosedLed = 15;                         // door closed: green 
 const int coopDoorOpenLed = 2;                            // door open: red LED
 const int coopDoorMovingLed = 4;                          // door moving/stopped: yellow LED
 const int commandToCoopLed = 5;                           // outside command coming in: blue LED
+const int wifiConnected = 25;                             // LED inside box indicating wifi is connected
+const int wifiNotConnected = 26;                          // LED inside box indicating wifi is NOT connected
 
 // local buttons
 const int localUpButton = 23;                             // up button
@@ -147,6 +149,8 @@ void setup() {
   pinMode (commandToCoopLed, OUTPUT);
   pinMode (overrideA, INPUT);
   pinMode (overrideB, INPUT);
+  pinMode (wifiConnected, OUTPUT);
+  pinMode (wifiNotConnected, OUTPUT);
 
   Serial.begin(115200);                                     // serial monitor
   Serial2.begin(9600);                                    // master connection
@@ -162,9 +166,14 @@ void setup() {
   Serial.println(ssid);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    delay(1000);
     Serial.print(".");
+    digitalWrite (wifiNotConnected, HIGH);
+    digitalWrite (wifiConnected, LOW);
   } 
+  digitalWrite (wifiNotConnected, LOW);
+  digitalWrite (wifiConnected, HIGH);
+
   // Print local IP address and start web server
   Serial.println("");
   Serial.println("WiFi connected.");
@@ -469,16 +478,18 @@ void wifiProcessing() {
             
             // process information from webpage button presses
             if (header.indexOf("GET /6/on") >= 0) {       // the lower coop door button was pressed
-              wifiSays = "lower coop door";
+                wifiSays = "lower coop door";
             } else if (header.indexOf("GET /5/on") >= 0) {// the stop coop door button was pressed
-              wifiSays = "stop coop door";                
+                wifiSays = "stop coop door";                
             } else if (header.indexOf("GET /4/on") >= 0) {// the raise coop door button was pressed
-              wifiSays = "raise coop door";               
+                wifiSays = "raise coop door";               
             } else if (header.indexOf("GET /7/on") >=0) { // the stop connection button was pressed
+                client.stop();                                        // Close the connection
+                Serial.println("Client closed connection");
             } else if (header.indexOf("GET /8/on") >=0) { // engage automatic door control - listen to the master
-              wifiSays = "turn on automatic door control";
+                wifiSays = "turn on automatic door control";
             } else if (header.indexOf("GET /8/off") >=0) {// disengage automatic door control - ignore the master
-              wifiSays = "turn off automatic door control";
+                wifiSays = "turn off automatic door control";
             } 
             
             // Display the HTML web page
@@ -486,7 +497,6 @@ void wifiProcessing() {
             client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
             client.println("<link rel=\"icon\" href=\"data:,\">");
             // CSS to style the on/off buttons 
-            // Feel free to change the background-color and font-size attributes to fit your preferences
             client.println("<style>html { font-family: arial; display: inline-block; margin: 0px auto; text-align: center;}");
             client.println(".button {background-color: #007000; border-radius: 38px; border: 3px solid #4b8f29; color: white; padding: 14px 40px;");
             client.println("text-decoration: none; font-size: 25px; width: 300px; margin: 2px; cursor: pointer;}");
@@ -498,6 +508,8 @@ void wifiProcessing() {
             client.println("color: #ffebff; padding: 8px 40px; text-decoration: none; font-size: 15px; font-weight:bold; width: 300px; margin: 2px; cursor: pointer; text-shadow:0px 1px 0px #020f00;}");
             client.println(".button5 {box-shadow:inset 0px -3px 7px 0px #020f00; background-color: #ff005e; border-radius: 42px; border: 2px solid #aa00ff;");
             client.println("color: #ffebff; padding: 8px 40px; text-decoration: none; font-size: 15px; width: 300px; margin: 2px; cursor: pointer; text-shadow:0px 1px 0px #020f00;}</style>");
+
+            // set page to refresh every CONTENT seconds
             client.println("<META HTTP-EQUIV=\"refresh\" CONTENT= \"15\"></head>");
 
             // Web Page Heading
@@ -692,6 +704,13 @@ void debugStatus(int fromCall) {
 }
 
 void loop() {
+  if(WiFi.status() == WL_CONNECTED) {
+    digitalWrite(wifiConnected, HIGH);
+    digitalWrite(wifiNotConnected, LOW);
+  } else {
+    digitalWrite(wifiConnected, LOW);
+    digitalWrite(wifiNotConnected, HIGH);
+  }
   currentMillis = millis();                               // reset timing reference
   recWithEndMarker();                                     // look for new instructions from master
   masterSaysNewData();                                    // process new instructions from master
