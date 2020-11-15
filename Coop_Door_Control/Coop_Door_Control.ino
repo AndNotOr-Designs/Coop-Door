@@ -46,6 +46,8 @@ const char* ssid     = "OurCoop";
 const char* password = "4TheChickens!";
 
 WiFiServer server(80);                                    // Set web server port number to 80
+WiFiClient client(80);                                    // set web client port number to 80
+
 /*
 // Set IP address
 IPAddress local_IP(10, 4, 20, 240);                   // production IP address
@@ -60,6 +62,11 @@ String header;                                            // Variable to store t
 // Auxiliary variables to store the current output state
 String doorState = "";                                    // status of door for webpage launching
 String wifiSays = "";                                     // information from webpage
+
+// ThingSpeak
+String causeCodeKey = "8VPX0I3SRBXTXRD9";                 // key for lighting monitoring at ThingSpeak
+int causeCode = 0;                                        // cause code for door movement
+String causeCodeStr = "";
 
 // reed sensors
 const int bottomSwitchPin = 35;                           // bottom reed sensor
@@ -276,13 +283,33 @@ void operateCoopDoor() {                                  // time to operate the
     masterSays = "";                                      // clear what the master says so only execute once
     wifiSays = "";                                        // clear what the webpage says so only execute once
     closeCoopDoor();                                      // close the door
+    if (masterSays == "lower coop door") {
+      causeCode = 200;
+    } else if (buttonSaysDown == 1) {
+      causeCode = 225;
+    } else if (wifiSays == "lower coop door") {
+      causeCode = 250;
+    } else {
+      causeCode = 275;
     }
+    sendToThingSpeak();
+  }
   if ((masterSays == "raise coop door")  || (buttonSaysUp == 1) || (wifiSays == "raise coop door")) {
     debugStatus(fromOperateCoopDoorUp);                   // debugging
     masterSays = "";                                      // clear what the master says so only execute once
     wifiSays = "";                                        // clear what the webpage says so only execute once
     openCoopDoor();                                       // open the door
+    if (masterSays == "raise coop door") {
+      causeCode = 100;
+    } else if (buttonSaysUp == 1) {
+      causeCode = 125;
+    } else if (wifiSays == "raise coop door") {
+      causeCode = 150;
+    } else {
+      causeCode = 175;
     }
+    sendToThingSpeak();
+  }
   if ((masterSays == "stop coop door")  || (buttonSaysStop == 1) || (wifiSays == "stop coop door")) {
     debugStatus(fromOperateCoopDoorStop);                 // debugging
     masterSays = "";                                      // clear what the master says so only execute once
@@ -290,6 +317,16 @@ void operateCoopDoor() {                                  // time to operate the
     if((topSwitchVal != 1) || (bottomSwitchVal != 1)){    // only run if door hasn't reached full open or close
       stopCoopDoor();                                     // stop the door
     }
+    if (masterSays == "stop coop door") {
+      causeCode = 300;
+    } else if (buttonSaysStop == 1) {
+      causeCode = 325;
+    } else if (wifiSays == "stop coop door") {
+      causeCode = 350;
+    } else {
+      causeCode = 375;
+    }
+    sendToThingSpeak();
   }
 }
 void localButtons() {                                     // both sets of buttons are tied in toghether
@@ -559,6 +596,43 @@ void wifiProcessing() {
     Serial.println("Client disconnected.");
     Serial.println("");
   }
+}
+
+void sendToThingSpeak() {
+  client.print("AT+CIPSTART=\"TCP\",\"184.106.153.149\",80");
+  delay(2500);
+  if(client.available()) {
+    while(client.available()) {
+      char c = client.read();
+      Serial.write(c);
+    }
+  }
+  causeCodeStr = "GET /update?api_key=";
+  causeCodeStr += causeCodeKey;
+  causeCodeStr +="&field6=";
+  causeCodeStr +=String(causeCode);
+  causeCodeStr +="\r\n\r\n";
+  String causeCodeCmd = "AT+CIPSEND=";
+  causeCodeCmd += String(causeCodeStr.length());
+  client.print(causeCodeCmd);
+  delay(2500);
+  if(client.available()) {
+    while(client.available()) {
+      char c = client.read();
+      Serial.write(c);
+    }
+  }
+  client.print(causeCode);
+  Serial.print("cause code to ThingSpeak: ");
+  Serial.println(causeCode);
+  delay(2500);
+  if(Serial2.available()) {
+    while(Serial2.available()) {
+      char c = Serial2.read();
+      Serial.write(c);
+    }
+  }
+  client.stop();
 }
 
 void debugStatus(int fromCall) {
