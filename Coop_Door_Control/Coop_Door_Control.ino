@@ -28,9 +28,10 @@
 
 
 #include <WiFi.h>                                         // for webserver
+#include <HTTPClient.h>                                   // for ThingSpeak
 
 boolean debugOn = true;                                  // debugging flag
-boolean superDebugOn = false;                             // verbose debugging does cause a delay in button push response
+boolean superDebugOn = true;                             // verbose debugging does cause a delay in button push response
 boolean debugWithDelay = false;                           // adds 10 second delay to verbose debugging - causes issues with debouncing!
 
 boolean autoOpenOn = true;                               // switch for tracking whether to listen to commands from master or not
@@ -67,6 +68,7 @@ String wifiSays = "";                                     // information from we
 String causeCodeKey = "8VPX0I3SRBXTXRD9";                 // key for lighting monitoring at ThingSpeak
 int causeCode = 0;                                        // cause code for door movement
 String causeCodeStr = "";
+const char* serverName = "http://api.thingspeak.com/update";
 
 // reed sensors
 const int bottomSwitchPin = 35;                           // bottom reed sensor
@@ -254,6 +256,7 @@ void closeCoopDoor() {                                    // close coop door
       stopCoopDoor();
     }
     debugStatus(fromCloseCoopDoor);                       // debugging
+    sendToThingSpeak();
   }
 }
 void openCoopDoor() {                                     // open coop door
@@ -268,6 +271,7 @@ void openCoopDoor() {                                     // open coop door
       stopCoopDoor();
     }
     debugStatus(fromOpenCoopDoor);                        // debugging
+    sendToThingSpeak();
   }
 }
 void doorMoving() {                                       // door is moving
@@ -287,27 +291,10 @@ void doorMoving() {                                       // door is moving
   }
 }
 void operateCoopDoor() {                                  // time to operate the coop door somehow
-  if ((masterSays == "lower coop door") || (buttonSaysDown == 1) || (wifiSays == "lower coop door")) {
-    debugStatus(fromOperateCoopDoorDown);                 // debugging
-    masterSays = "";                                      // clear what the master says so only execute once
-    wifiSays = "";                                        // clear what the webpage says so only execute once
-    closeCoopDoor();                                      // close the door
-    if (masterSays == "lower coop door") {
-      causeCode = 200;
-    } else if (buttonSaysDown == 1) {
-      causeCode = 225;
-    } else if (wifiSays == "lower coop door") {
-      causeCode = 250;
-    } else {
-      causeCode = 275;
-    }
-    sendToThingSpeak();
-  }
-  if ((masterSays == "raise coop door")  || (buttonSaysUp == 1) || (wifiSays == "raise coop door")) {
+  if ((masterSays == "raise coop door") || (buttonSaysUp == 1) || (wifiSays == "raise coop door")) {
     debugStatus(fromOperateCoopDoorUp);                   // debugging
     masterSays = "";                                      // clear what the master says so only execute once
     wifiSays = "";                                        // clear what the webpage says so only execute once
-    openCoopDoor();                                       // open the door
     if (masterSays == "raise coop door") {
       causeCode = 100;
     } else if (buttonSaysUp == 1) {
@@ -317,7 +304,22 @@ void operateCoopDoor() {                                  // time to operate the
     } else {
       causeCode = 175;
     }
-    sendToThingSpeak();
+    openCoopDoor();                                       // open the door
+  }
+  if ((masterSays == "lower coop door") || (buttonSaysDown == 1) || (wifiSays == "lower coop door")) {
+    debugStatus(fromOperateCoopDoorDown);                 // debugging
+    masterSays = "";                                      // clear what the master says so only execute once
+    wifiSays = "";                                        // clear what the webpage says so only execute once
+    if (masterSays == "lower coop door") {
+      causeCode = 200;
+    } else if (buttonSaysDown == 1) {
+      causeCode = 225;
+    } else if (wifiSays == "lower coop door") {
+      causeCode = 250;
+    } else {
+      causeCode = 275;
+    }
+    closeCoopDoor();                                      // close the door
   }
   if ((masterSays == "stop coop door")  || (buttonSaysStop == 1) || (wifiSays == "stop coop door")) {
     debugStatus(fromOperateCoopDoorStop);                 // debugging
@@ -326,16 +328,6 @@ void operateCoopDoor() {                                  // time to operate the
     if((topSwitchVal != 1) || (bottomSwitchVal != 1)){    // only run if door hasn't reached full open or close
       stopCoopDoor();                                     // stop the door
     }
-    if (masterSays == "stop coop door") {
-      causeCode = 300;
-    } else if (buttonSaysStop == 1) {
-      causeCode = 325;
-    } else if (wifiSays == "stop coop door") {
-      causeCode = 350;
-    } else {
-      causeCode = 375;
-    }
-    sendToThingSpeak();
   }
 }
 void localButtons() {                                     // both sets of buttons are tied in toghether
@@ -611,40 +603,21 @@ void wifiProcessing() {
 }
 
 void sendToThingSpeak() {
-  client.print("AT+CIPSTART=\"TCP\",\"184.106.153.149\",80");
-  delay(2500);
-  if(client.available()) {
-    while(client.available()) {
-      char c = client.read();
-      Serial.write(c);
-    }
-  }
-  causeCodeStr = "GET /update?api_key=";
+  HTTPClient http;
+  http.begin(serverName);
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+  causeCodeStr = "api_key=";
   causeCodeStr += causeCodeKey;
   causeCodeStr +="&field6=";
   causeCodeStr +=String(causeCode);
-  causeCodeStr +="\r\n\r\n";
-  String causeCodeCmd = "AT+CIPSEND=";
-  causeCodeCmd += String(causeCodeStr.length());
-  client.print(causeCodeCmd);
-  delay(2500);
-  if(client.available()) {
-    while(client.available()) {
-      char c = client.read();
-      Serial.write(c);
-    }
-  }
-  client.print(causeCode);
+  int httpResponseCode = http.POST(causeCodeStr);
   Serial.print("cause code to ThingSpeak: ");
   Serial.println(causeCode);
-  delay(2500);
-  if(Serial2.available()) {
-    while(Serial2.available()) {
-      char c = Serial2.read();
-      Serial.write(c);
-    }
-  }
-  client.stop();
+  Serial.print("string to ThingSpeak: ");
+  Serial.println(causeCodeStr);
+  Serial.print("HTTP Response code: ");
+  Serial.println(httpResponseCode);
+  http.end();
 }
 
 void debugStatus(int fromCall) {
@@ -760,6 +733,11 @@ void debugStatus(int fromCall) {
       Serial.print(messageToMaster);
       Serial.print(" slaveSaid: ");
       Serial.println(slaveSaid);
+    // ThingSpeak
+      Serial.print("Last Cause Code: ");
+      Serial.println(causeCode);
+      Serial.print("ThingSpeak Info: last string: ");
+      Serial.println(causeCodeStr);
     // timing
       Serial.print("Timing: lastDebounceTime: ");
       Serial.println(lastDebounceTime);
