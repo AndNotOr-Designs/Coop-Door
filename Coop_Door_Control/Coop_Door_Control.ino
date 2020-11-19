@@ -179,6 +179,10 @@ void setup() {
     Serial.print(".");
     digitalWrite (wifiNotConnected, HIGH);
     digitalWrite (wifiConnected, LOW);
+    if(millis() > 10000) {                              // hasn't connected to WiFi for 10 seconds
+      Serial.println("No WiFi connection, rebooting");
+      ESP.restart();
+    }
   } 
   digitalWrite (wifiNotConnected, LOW);
   digitalWrite (wifiConnected, HIGH);
