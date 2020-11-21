@@ -45,6 +45,10 @@ int blinky = LOW;                                         // blinking status
 // network information
 const char* ssid     = "OurCoop";
 const char* password = "4TheChickens!";
+unsigned long lostWiFi = 0;                               // for timing on when ESP32 loses signal to allow for reboot
+const long waitForWiFi = 30000;                           // wait time to see if WiFi gets connected before rebooting
+int networkBlink = LOW;
+const long networkBlinkInterval = 500;
 
 WiFiServer server(80);                                    // Set web server port number to 80
 WiFiClient client(80);                                    // set web client port number to 80
@@ -92,9 +96,9 @@ int doorGoingUp = 0;                                      // tracking door direc
 const int coopDoorClosedLed = 15;                         // door closed: green LED
 const int coopDoorOpenLed = 2;                            // door open: red LED
 const int coopDoorMovingLed = 4;                          // door moving/stopped: yellow LED
-const int commandToCoopLed = 5;                           // outside command coming in: blue LED
-const int wifiConnected = 25;                             // LED inside box indicating wifi is connected
-const int wifiNotConnected = 26;                          // LED inside box indicating wifi is NOT connected
+const int commandToCoopLed = 25;                          // outside command coming in: green LED inside box
+const int wifiConnected = 5;                              // wifi connected: blue LED by window
+const int wifiNotConnected = 26;                          // wifi not connected: red LED inside box
 
 // local buttons
 const int localUpButton = 23;                             // up button
@@ -161,6 +165,8 @@ void setup() {
   pinMode (wifiConnected, OUTPUT);
   pinMode (wifiNotConnected, OUTPUT);
 
+  digitalWrite (wifiNotConnected, HIGH);
+
   Serial.begin(115200);                                     // serial monitor
   Serial2.begin(9600);                                    // master connection
   Serial.println("Coop_Door_Control_v2.02 - 10/06/2019");
@@ -179,7 +185,7 @@ void setup() {
     Serial.print(".");
     digitalWrite (wifiNotConnected, HIGH);
     digitalWrite (wifiConnected, LOW);
-    if(millis() > 10000) {                              // hasn't connected to WiFi for 10 seconds
+    if(millis() > 30000) {                              // hasn't connected to WiFi for 30 seconds
       Serial.println("No WiFi connection, rebooting");
       ESP.restart();
     }
@@ -386,16 +392,16 @@ void coopDoorLed() {
     messageToMaster = "door down>";                       // tell the master door is down
   }
   if(topSwitchState == 1) {                               // top read switch closed
-    digitalWrite (coopDoorClosedLed, LOW);                // turn off closed led
     digitalWrite (coopDoorOpenLed, HIGH);                 // turn on open led
+    digitalWrite (coopDoorClosedLed, LOW);                // turn off closed led
     digitalWrite (coopDoorMovingLed, LOW);                // turn off moving led
     doorState = "open";                                   // webpage tracking
     messageToMaster = "door up>";                         // tell the master door is up
   }
   if(((doorGoingDown == 1) || (doorGoingUp == 1)) && ((bottomSwitchState == 0) && (topSwitchState == 0))) {  // neither read switch closed
+    digitalWrite (coopDoorMovingLed, HIGH);               // turn on moving led
     digitalWrite (coopDoorClosedLed, LOW);                // turn off closed led
     digitalWrite (coopDoorOpenLed, LOW);                  // turn off open led
-    digitalWrite (coopDoorMovingLed, HIGH);               // turn on moving led
     doorState = "moving";                                 // webpage tracking
     messageToMaster = "door moving>";                     // tell the master door is moving
   }
@@ -410,6 +416,18 @@ void coopDoorLed() {
       messageToMaster = "door stopped>";                  // tell the master door is stopped
       debounceBottomReed();                               // check door down status
       debounceTopReed();                                  // check door up status
+    }
+  }
+  if(WiFi.status() == WL_CONNECTED) {
+    digitalWrite(wifiConnected, HIGH);
+    digitalWrite(wifiNotConnected, LOW);
+    lostWiFi = 0;
+  } else {
+    digitalWrite(wifiNotConnected, HIGH);
+    digitalWrite(wifiConnected, LOW);
+    lostWiFi = currentMillis;
+    if((currentMillis - lostWiFi) >= waitForWiFi) {
+      ESP.restart();
     }
   }
 }
@@ -496,6 +514,7 @@ void wifiProcessing() {
   WiFiClient client = server.available();                 // Listen for incoming clients
   if (client) {                                           // If a new client connects,
     Serial.println("New Client.");                        // print a message out in the serial port
+    digitalWrite(wifiConnected, LOW);                     // allow flash of LED to show new client connected
     String currentLine = "";                              // make a String to hold incoming data from the client
     while (client.connected()) {                          // loop while the client's connected
       if (client.available()) {                           // if there's bytes to read from the client,
@@ -760,13 +779,6 @@ void debugStatus(int fromCall) {
 }
 
 void loop() {
-  if(WiFi.status() == WL_CONNECTED) {
-    digitalWrite(wifiConnected, HIGH);
-    digitalWrite(wifiNotConnected, LOW);
-  } else {
-    digitalWrite(wifiConnected, LOW);
-    digitalWrite(wifiNotConnected, HIGH);
-  }
   currentMillis = millis();                               // reset timing reference
   recWithEndMarker();                                     // look for new instructions from master
   masterSaysNewData();                                    // process new instructions from master
