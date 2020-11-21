@@ -41,6 +41,7 @@ unsigned long currentMillis = 0;                          // reference
 unsigned long splitSecond = 0;                            // 2 second reference
 const long interval = 500;                                // 50 ms
 int blinky = LOW;                                         // blinking status
+unsigned long blinkyCount = 0;
 
 // network information
 const char* ssid     = "OurCoop";
@@ -49,6 +50,8 @@ unsigned long lostWiFi = 0;                               // for timing on when 
 const long waitForWiFi = 30000;                           // wait time to see if WiFi gets connected before rebooting
 int networkBlink = LOW;
 const long networkBlinkInterval = 500;
+int initialLostWiFi = 0;                                  // flag to enter into wait time to reboot
+int counter = 30;                                          // for serial printing of counter till reboot
 
 WiFiServer server(80);                                    // Set web server port number to 80
 WiFiClient client(80);                                    // set web client port number to 80
@@ -165,7 +168,7 @@ void setup() {
   pinMode (wifiConnected, OUTPUT);
   pinMode (wifiNotConnected, OUTPUT);
 
-  digitalWrite (wifiNotConnected, HIGH);
+//  digitalWrite (wifiNotConnected, HIGH);
 
   Serial.begin(115200);                                     // serial monitor
   Serial2.begin(9600);                                    // master connection
@@ -181,10 +184,12 @@ void setup() {
   Serial.println(ssid);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.print(".");
     digitalWrite (wifiNotConnected, HIGH);
     digitalWrite (wifiConnected, LOW);
+    Serial.print(counter);
+    Serial.print(".");
+    counter--;
+    delay(1000);
     if(millis() > 30000) {                              // hasn't connected to WiFi for 30 seconds
       Serial.println("No WiFi connection, rebooting");
       ESP.restart();
@@ -192,6 +197,7 @@ void setup() {
   } 
   digitalWrite (wifiNotConnected, LOW);
   digitalWrite (wifiConnected, HIGH);
+  counter = 30;
 
   // Print local IP address and start web server
   Serial.println("");
@@ -422,12 +428,23 @@ void coopDoorLed() {
     digitalWrite(wifiConnected, HIGH);
     digitalWrite(wifiNotConnected, LOW);
     lostWiFi = 0;
+    counter = 30;
   } else {
-    digitalWrite(wifiNotConnected, HIGH);
-    digitalWrite(wifiConnected, LOW);
-    lostWiFi = currentMillis;
-    if((currentMillis - lostWiFi) >= waitForWiFi) {
-      ESP.restart();
+    if(initialLostWiFi == 0) {
+      lostWiFi = currentMillis;
+      initialLostWiFi = 1;      
+      Serial.print("Lost WiFi, rebooting countdown: ");
+    } else {
+      digitalWrite (wifiNotConnected, HIGH);
+      digitalWrite (wifiConnected, LOW);
+      Serial.print(counter);
+      Serial.print(".");
+      counter--;
+      delay(1000);
+      if((currentMillis - lostWiFi) >= waitForWiFi) {                              // hasn't connected to WiFi for 30 seconds
+        Serial.println("No WiFi connection, rebooting");
+        ESP.restart();
+      }
     }
   }
 }
