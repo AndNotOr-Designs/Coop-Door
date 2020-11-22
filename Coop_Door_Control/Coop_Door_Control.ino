@@ -31,7 +31,7 @@
 #include <HTTPClient.h>                                   // for ThingSpeak
 #include "TimeLib.h"                                      // NTP
 
-boolean debugOn = true;                                  // debugging flag
+boolean debugOn = false;                                  // debugging flag
 boolean superDebugOn = false;                             // verbose debugging does cause a delay in button push response
 boolean debugWithDelay = false;                           // adds 10 second delay to verbose debugging - causes issues with debouncing!
 
@@ -124,7 +124,7 @@ const int freq = 5000;
 const int ledChannel = 0;
 const int resolution = 8;
 int dutyCycle;
-const int ledBrightness = 128;
+const int ledBrightness = 30;
 
 // local buttons
 const int localUpButton = 23;                             // up button
