@@ -29,6 +29,7 @@
 
 #include <WiFi.h>                                         // for webserver
 #include <HTTPClient.h>                                   // for ThingSpeak
+#include "TimeLib.h"                                      // NTP
 
 boolean debugOn = true;                                  // debugging flag
 boolean superDebugOn = true;                             // verbose debugging does cause a delay in button push response
@@ -55,6 +56,20 @@ int counter = 30;                                          // for serial printin
 
 WiFiServer server(80);                                    // Set web server port number to 80
 WiFiClient client(80);                                    // set web client port number to 80
+
+// time
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = -18000;
+const int   daylightOffset_sec = 3600;
+String closeTimeStamp;
+String openTimeStamp;
+int ntpMonth;
+int ntpDay;
+int ntpYear;
+int ntpHour;
+int ntpMinute;
+int ntpSecond;
+struct tm timeinfo;
 
 /*
 // Set IP address
@@ -149,6 +164,8 @@ const int fromDebounceBottomReed = 14;
 const int fromDebounceTopReed = 15;
 const int fromAutomaticControlOn = 16;
 const int fromAutomaticControlOff = 17;
+const int doorClosed = 18;
+const int doorOpened = 19;
 
 // setup
 void setup() {
@@ -208,6 +225,20 @@ void setup() {
   Serial.println(WiFi.macAddress());
   server.begin();
 // end WiFi connection section
+
+  //init and get the time
+  Serial.print(timeStatus());
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  printLocalTime();
+  ntpMonth = timeinfo.tm_mon;
+  ntpDay = timeinfo.tm_mday;
+  ntpYear = timeinfo.tm_year +1901;
+  ntpHour = timeinfo.tm_hour;
+  ntpMinute = timeinfo.tm_min;
+  ntpSecond = timeinfo.tm_sec;
+  setTime(ntpHour,ntpMinute,ntpSecond,ntpDay,ntpMonth,ntpYear);
+  
+
 
   lastDebounceTime = millis();                            // start debounce tracking
   delay(debounceDelay + 50);                              // wait for delay to execute debounce
@@ -272,7 +303,9 @@ void closeCoopDoor() {                                    // close coop door
       stopCoopDoor();
     }
     debugStatus(fromCloseCoopDoor);                       // debugging
-    sendToThingSpeak();
+    tm timeinfo;
+    closeTimeStamp = String(timeinfo.tm_hour) + String(timeinfo.tm_min) + String(timeinfo.tm_sec);
+    sendToThingSpeak(doorClosed);
   }
 }
 void openCoopDoor() {                                     // open coop door
@@ -287,7 +320,9 @@ void openCoopDoor() {                                     // open coop door
       stopCoopDoor();
     }
     debugStatus(fromOpenCoopDoor);                        // debugging
-    sendToThingSpeak();
+    tm timeinfo;
+    openTimeStamp = String(timeinfo.tm_hour) + String(timeinfo.tm_min) + String(timeinfo.tm_sec);
+    sendToThingSpeak(doorOpened);
   }
 }
 void doorMoving() {                                       // door is moving
@@ -642,7 +677,7 @@ void wifiProcessing() {
   }
 }
 
-void sendToThingSpeak() {
+void sendToThingSpeak(int status) {
   HTTPClient http;
   http.begin(serverName);
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -650,6 +685,16 @@ void sendToThingSpeak() {
   causeCodeStr += causeCodeKey;
   causeCodeStr +="&field6=";
   causeCodeStr +=String(causeCode);
+  switch (status) {
+    case doorOpened:
+      causeCodeStr +="&field8=";
+      causeCodeStr +=String(openTimeStamp);
+      break;
+    case doorClosed:
+      causeCodeStr +="&field7=";
+      causeCodeStr +=String(closeTimeStamp);
+      break;
+  }
   int httpResponseCode = http.POST(causeCodeStr);
   Serial.print("cause code to ThingSpeak: ");
   Serial.println(causeCode);
@@ -663,6 +708,17 @@ void sendToThingSpeak() {
 void debugStatus(int fromCall) {
   if (debugOn == true) {
     Serial.println("- - - - - - - - - -");
+    Serial.print(month());
+    Serial.print("/");
+    Serial.print(day());
+    Serial.print("/");
+    Serial.print(year());
+    Serial.print(" ");
+    Serial.print(hour());
+    Serial.print(":");
+    Serial.print(minute());
+    Serial.print(":");
+    Serial.println(second());
     Serial.print("call: ");
     switch (fromCall) {
       case fromMasterSaysNewData:
@@ -778,6 +834,11 @@ void debugStatus(int fromCall) {
       Serial.println(causeCode);
       Serial.print("ThingSpeak Info: last string: ");
       Serial.println(causeCodeStr);
+    // timeStamps
+      Serial.print("openTimeStamp: ");
+      Serial.print(openTimeStamp);
+      Serial.print(", closeTimeStamp: ");
+      Serial.println(closeTimeStamp);
     // timing
       Serial.print("Timing: lastDebounceTime: ");
       Serial.println(lastDebounceTime);
@@ -793,6 +854,16 @@ void debugStatus(int fromCall) {
     }
     Serial.println("- - - - - - - - - -");
   }
+}
+
+void printLocalTime()
+{
+  tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
 }
 
 void loop() {
