@@ -119,6 +119,13 @@ const int commandToCoopLed = 25;                          // outside command com
 const int wifiConnected = 5;                              // wifi connected: blue LED by window
 const int wifiNotConnected = 26;                          // wifi not connected: red LED inside box
 
+// PWM
+const int freq = 5000;
+const int ledChannel = 0;
+const int resolution = 8;
+int dutyCycle;
+const int ledBrightness = 128;
+
 // local buttons
 const int localUpButton = 23;                             // up button
 const int localStopButton = 22;                           // stop button
@@ -183,10 +190,11 @@ void setup() {
   pinMode (commandToCoopLed, OUTPUT);
   pinMode (overrideA, INPUT);
   pinMode (overrideB, INPUT);
-  pinMode (wifiConnected, OUTPUT);
+//  pinMode (wifiConnected, OUTPUT);
   pinMode (wifiNotConnected, OUTPUT);
 
-//  digitalWrite (wifiNotConnected, HIGH);
+  ledcSetup(ledChannel, freq, resolution);
+  ledcAttachPin(wifiConnected, ledChannel);
 
   Serial.begin(115200);                                     // serial monitor
   Serial2.begin(9600);                                    // master connection
@@ -203,7 +211,6 @@ void setup() {
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     digitalWrite (wifiNotConnected, HIGH);
-    digitalWrite (wifiConnected, LOW);
     Serial.print(counter);
     Serial.print(".");
     counter--;
@@ -214,7 +221,6 @@ void setup() {
     }
   } 
   digitalWrite (wifiNotConnected, LOW);
-  digitalWrite (wifiConnected, HIGH);
   counter = 30;
 
   // Print local IP address and start web server
@@ -451,7 +457,11 @@ void coopDoorLed() {
     }
   }
   if(WiFi.status() == WL_CONNECTED) {
-    digitalWrite(wifiConnected, HIGH);
+    if(doorState != "closed") {                           // door is open, other LEDs are on, so it's OK to be this bright
+      dutyCycle = 254;                                    // full brightness      
+    } else {
+      dutyCycle = ledBrightness;                          // reduced brightness
+    }
     digitalWrite(wifiNotConnected, LOW);
     lostWiFi = 0;
     counter = 30;
@@ -462,7 +472,7 @@ void coopDoorLed() {
       Serial.print("Lost WiFi, rebooting countdown: ");
     } else {
       digitalWrite (wifiNotConnected, HIGH);
-      digitalWrite (wifiConnected, LOW);
+      dutyCycle = 0;
       Serial.print(counter);
       Serial.print(".");
       counter--;
@@ -897,6 +907,7 @@ void printDigits(int digits){
   Serial.print(digits);
 }
 void loop() {
+  ledcWrite(ledChannel, dutyCycle);
   currentMillis = millis();                               // reset timing reference
   recWithEndMarker();                                     // look for new instructions from master
   masterSaysNewData();                                    // process new instructions from master
