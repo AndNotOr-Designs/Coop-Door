@@ -32,7 +32,7 @@
 #include "TimeLib.h"                                      // NTP
 
 boolean debugOn = true;                                  // debugging flag
-boolean superDebugOn = true;                             // verbose debugging does cause a delay in button push response
+boolean superDebugOn = false;                             // verbose debugging does cause a delay in button push response
 boolean debugWithDelay = false;                           // adds 10 second delay to verbose debugging - causes issues with debouncing!
 
 boolean autoOpenOn = true;                               // switch for tracking whether to listen to commands from master or not
@@ -69,7 +69,7 @@ int ntpYear;
 int ntpHour;
 int ntpMinute;
 int ntpSecond;
-int timeHasBeenSet;
+int timeHasBeenSet = 0;
 String timeStamp;
 
 /*
@@ -843,10 +843,28 @@ void printLocalTime()
     Serial.println("Failed to obtain time");
     return;
   }
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
-  ntpMonth = timeinfo.tm_mon;
+  /* time info formatting:
+   *  https://en.cppreference.com/w/c/chrono/strftime
+   *  %A = Full weekday name
+   *  %a = Abbreviated weekday name
+   *  %B = Full month name
+   *  %m = Month as decimal number
+   *  %b = Abbreviated month name
+   *  %d = Day of the month
+   *  %0d = zero based Day of the month
+   *  %j = Day of the year
+   *  %U = Week of the year (sunday first day of week)
+   *  %Y = 4 digit year
+   *  %y = 2 digit year
+   *  %H = Hour in 24h format
+   *  %I = Hour in 12h format
+   *  %M = Minute
+   *  %S = Second
+  */
+  Serial.println(&timeinfo, "%A, %m/%d/%Y %H:%M:%S");
+  ntpMonth = timeinfo.tm_mon +1;
   ntpDay = timeinfo.tm_mday;
-  ntpYear = timeinfo.tm_year +1901;
+  ntpYear = timeinfo.tm_year +1900;
   ntpHour = timeinfo.tm_hour;
   ntpMinute = timeinfo.tm_min;
   ntpSecond = timeinfo.tm_sec;
@@ -869,10 +887,15 @@ void printLocalTime()
   } else {
     timeStamp +=  String(ntpSecond);
   }
-  Serial.println(timeStamp);
-  Serial.println(now());
 }
 
+void printDigits(int digits){
+  // utility for digital clock display: prints preceding colon and leading 0
+  Serial.print(":");
+  if(digits < 10)
+    Serial.print('0');
+  Serial.print(digits);
+}
 void loop() {
   currentMillis = millis();                               // reset timing reference
   recWithEndMarker();                                     // look for new instructions from master
