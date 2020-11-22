@@ -69,7 +69,8 @@ int ntpYear;
 int ntpHour;
 int ntpMinute;
 int ntpSecond;
-struct tm timeinfo;
+int timeHasBeenSet;
+String timeStamp;
 
 /*
 // Set IP address
@@ -227,18 +228,8 @@ void setup() {
 // end WiFi connection section
 
   //init and get the time
-  Serial.print(timeStatus());
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   printLocalTime();
-  ntpMonth = timeinfo.tm_mon;
-  ntpDay = timeinfo.tm_mday;
-  ntpYear = timeinfo.tm_year +1901;
-  ntpHour = timeinfo.tm_hour;
-  ntpMinute = timeinfo.tm_min;
-  ntpSecond = timeinfo.tm_sec;
-  setTime(ntpHour,ntpMinute,ntpSecond,ntpDay,ntpMonth,ntpYear);
-  
-
 
   lastDebounceTime = millis();                            // start debounce tracking
   delay(debounceDelay + 50);                              // wait for delay to execute debounce
@@ -303,8 +294,8 @@ void closeCoopDoor() {                                    // close coop door
       stopCoopDoor();
     }
     debugStatus(fromCloseCoopDoor);                       // debugging
-    tm timeinfo;
-    closeTimeStamp = String(timeinfo.tm_hour) + String(timeinfo.tm_min) + String(timeinfo.tm_sec);
+    printLocalTime();
+    closeTimeStamp = timeStamp;
     sendToThingSpeak(doorClosed);
   }
 }
@@ -320,8 +311,8 @@ void openCoopDoor() {                                     // open coop door
       stopCoopDoor();
     }
     debugStatus(fromOpenCoopDoor);                        // debugging
-    tm timeinfo;
-    openTimeStamp = String(timeinfo.tm_hour) + String(timeinfo.tm_min) + String(timeinfo.tm_sec);
+    printLocalTime();
+    openTimeStamp = timeStamp;
     sendToThingSpeak(doorOpened);
   }
 }
@@ -566,7 +557,6 @@ void wifiProcessing() {
   WiFiClient client = server.available();                 // Listen for incoming clients
   if (client) {                                           // If a new client connects,
     Serial.println("New Client.");                        // print a message out in the serial port
-    digitalWrite(wifiConnected, LOW);                     // allow flash of LED to show new client connected
     String currentLine = "";                              // make a String to hold incoming data from the client
     while (client.connected()) {                          // loop while the client's connected
       if (client.available()) {                           // if there's bytes to read from the client,
@@ -708,17 +698,7 @@ void sendToThingSpeak(int status) {
 void debugStatus(int fromCall) {
   if (debugOn == true) {
     Serial.println("- - - - - - - - - -");
-    Serial.print(month());
-    Serial.print("/");
-    Serial.print(day());
-    Serial.print("/");
-    Serial.print(year());
-    Serial.print(" ");
-    Serial.print(hour());
-    Serial.print(":");
-    Serial.print(minute());
-    Serial.print(":");
-    Serial.println(second());
+    printLocalTime();
     Serial.print("call: ");
     switch (fromCall) {
       case fromMasterSaysNewData:
@@ -864,6 +844,17 @@ void printLocalTime()
     return;
   }
   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+  ntpMonth = timeinfo.tm_mon;
+  ntpDay = timeinfo.tm_mday;
+  ntpYear = timeinfo.tm_year +1901;
+  ntpHour = timeinfo.tm_hour;
+  ntpMinute = timeinfo.tm_min;
+  ntpSecond = timeinfo.tm_sec;
+  if (timeHasBeenSet == 0) {
+    setTime(ntpHour,ntpMinute,ntpSecond,ntpDay,ntpMonth,ntpYear);
+    timeHasBeenSet = 1;
+  }
+  timeStamp = String(ntpHour) + String(ntpMinute) + String(ntpSecond);
 }
 
 void loop() {
