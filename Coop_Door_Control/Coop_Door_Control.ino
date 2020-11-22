@@ -854,7 +854,23 @@ void printLocalTime()
     setTime(ntpHour,ntpMinute,ntpSecond,ntpDay,ntpMonth,ntpYear);
     timeHasBeenSet = 1;
   }
-  timeStamp = String(ntpHour) + String(ntpMinute) + String(ntpSecond);
+  if(ntpHour < 10) {
+    timeStamp = String("0") + String(ntpHour);
+  } else {
+    timeStamp = String(ntpHour);
+  }
+  if(ntpMinute < 10) {
+    timeStamp += String("0") + String(ntpMinute);
+  } else {
+    timeStamp += String(ntpMinute);
+  }
+  if (ntpSecond <10) {
+    timeStamp += String("0") + String(ntpSecond);
+  } else {
+    timeStamp +=  String(ntpSecond);
+  }
+  Serial.println(timeStamp);
+  Serial.println(now());
 }
 
 void loop() {
