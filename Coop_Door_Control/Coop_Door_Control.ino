@@ -18,8 +18,8 @@ const String versionDate = "11/23/2020";
 #include <HTTPClient.h>                                   // for ThingSpeak
 #include "TimeLib.h"                                      // NTP
 
-boolean debugOn = false;                                  // debugging flag
-boolean superDebugOn = false;                             // verbose debugging does cause a delay in button push response
+boolean debugOn = true;                                  // debugging flag
+boolean superDebugOn = true;                             // verbose debugging does cause a delay in button push response
 boolean debugWithDelay = false;                           // adds 10 second delay to verbose debugging - causes issues with debouncing!
 
 boolean autoOpenOn = true;                                // switch for tracking whether to listen to commands from master or not
@@ -100,7 +100,6 @@ const int ledChannel = 0;
 const int resolution = 8;
 int dutyCycle;                                            // variable for how bright to set blue LED
 const int ledBrightness = 100;                            // how bright when door open
-String ambientLightSensorLevel = "";                      // light level from master (Dark, Twilight, Light)
 
 // local buttons
 const int localUpButton = 23;                             // up button
@@ -465,12 +464,12 @@ void coopDoorLed() {
     }
   }
   if(WiFi.status() == WL_CONNECTED) {
-    if(ambientLightSensorLevel == "Dark") {              // light level from master
+    if(doorState == "closed") {           
       dutyCycle = 100;                                    // min brightness      
-    } else if (ambientLightSensorLevel == "Light") {     // light level from master
+    } else if (doorState == "open") {     
+      dutyCycle = 180;                                    // full brightness
+    } else  {                             
       dutyCycle = 255;                                    // full brightness
-    } else if (ambientLightSensorLevel == "Twilight") {  // light level from master
-      dutyCycle = 150;                                    // medium brightness
     }
     digitalWrite(wifiNotConnected, LOW);                  // not connected LED
     lostWiFi = 0;                                         // tracking for when lost connection millis counts
@@ -550,16 +549,15 @@ void masterSaysNewData() {                                // new instructions fr
     debugStatus(fromMasterSaysNewData);                   // debugging
     newData = false;                                      // reset reference
   }
-  if ((masterSays == "Dark>") || (masterSays == "Twilight>") || (masterSays == "Light>")) {
-    ambientLightSensorLevel = masterSays;
-    masterSays = "";
-  }
 }
 void recWithEndMarker() {                                 // process strings from master
   char endMarker = '>';                                   // define end of string character
   char rc;                                                // receive character
   while (Serial2.available() >0 && newData == false) {    // data is there
     rc = Serial2.read();                                  // read the data
+    Serial.println();
+    Serial.print("void recWithEndMarker: ");
+    Serial.print(rc);
     if (rc == endMarker) {                                // do we see the end character
       if (autoOpenOn == true) {                           // only listen to the master when automatic door control is engaged
         newData = true;                                   // entire string is present, time to process
