@@ -853,6 +853,7 @@ void printLocalTime()
   } else {
     timeStamp += String(ntpMinute);
   }
+  timeStamp +=String(".");                                // format (h)hmm.ss
   if (ntpSecond <10) {
     timeStamp += String("0") + String(ntpSecond);         // adding leadiner zero
   } else {

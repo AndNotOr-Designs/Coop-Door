@@ -2,6 +2,7 @@
 
 2.06 11/23/20
 -  ambientLightSensorLevel from master to control WiFi connected LED
+- sets format of timeStamp by adding a dot between minutes and seconds
 
 2.05 - 11/22/2020
 - LED for wireless active 
