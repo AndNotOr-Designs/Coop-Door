@@ -4,28 +4,15 @@
 // Core Debug Level: "NONE"
 // Programmer: "AVRISP mkll"
 
+// version information - reference in README.md
+const signed long Coop_Door_Control_Version = 2.05;       
+const String versionDate = "11/23/2020";                  
+
 /* Loading note:
 - If you get the "Failed to connect to ESP32: Timed out... Connecting..." error when trying to upload code, it means that your ESP32 is not in flashing/uploading mode.
 - Hold-down the “BOOT” button in your ESP32 board
 - After you see the  “Connecting….” message in your Arduino IDE, release the finger from the “BOOT” button:
 */
-
-// Coop_Door_Control_v0.01 = not implemented, but the control from master is working along with the sensors
-// Coop_Door_Control_v0.02 = adds web control, lost control from master - need to go 232... - not fully implemented yet
-// Coop_Door_Control_v0.03 = adds communication with Mega Master
-// Coop_Door_Control_V1.00 = implemented still need to test communication from master (haven't implemented Master code yet)
-// Coop_Door_Control_V2.01 = completly cleared out all coop control stuff except wifi and communication with Master start again!
-// Coop_Door_Control_V2.02 = 10/6/19 implemented. Still need to complete master code, but all other is working.
-// Coop_Door_Control_V2.03 = 10/9/19 adds automated button to turn off reception of strings from master (for the really cold days we want the chickens to stay inside)
-// 2.04 = 11/30/19 - adds override buttons inside box to move motor in case the rope gets caught
-// NOTE - changed auto to True until I get this connected to the network
-// NOTE - might have to press EN button after loading code to allow network connection - will test tomorrow 11/30/19
-/* need to check
- *  1) wifi
- *  2) research Wifi strings to check that buttons work correctly - want a stop when it's moving and the open/close when it's stopped with respective feedback. Where does this need to go???? Currently putting this "feedback" in the LED section
- *  
-*/
-
 
 #include <WiFi.h>                                         // for webserver
 #include <HTTPClient.h>                                   // for ThingSpeak
@@ -35,52 +22,40 @@ boolean debugOn = false;                                  // debugging flag
 boolean superDebugOn = false;                             // verbose debugging does cause a delay in button push response
 boolean debugWithDelay = false;                           // adds 10 second delay to verbose debugging - causes issues with debouncing!
 
-boolean autoOpenOn = true;                               // switch for tracking whether to listen to commands from master or not
+boolean autoOpenOn = true;                                // switch for tracking whether to listen to commands from master or not
 
 // blinking timer
 unsigned long currentMillis = 0;                          // reference
 unsigned long splitSecond = 0;                            // 2 second reference
 const long interval = 500;                                // 50 ms
 int blinky = LOW;                                         // blinking status
-unsigned long blinkyCount = 0;
 
 // network information
 const char* ssid     = "OurCoop";
 const char* password = "4TheChickens!";
 unsigned long lostWiFi = 0;                               // for timing on when ESP32 loses signal to allow for reboot
 const long waitForWiFi = 30000;                           // wait time to see if WiFi gets connected before rebooting
-int networkBlink = LOW;
-const long networkBlinkInterval = 500;
 int initialLostWiFi = 0;                                  // flag to enter into wait time to reboot
-int counter = 30;                                          // for serial printing of counter till reboot
+int counter = 30;                                         // for serial printing of counter till reboot
 
 WiFiServer server(80);                                    // Set web server port number to 80
 WiFiClient client(80);                                    // set web client port number to 80
 
 // time
-const char* ntpServer = "pool.ntp.org";
-const long  gmtOffset_sec = -18000;
-const int   daylightOffset_sec = 3600;
-String closeTimeStamp;
-String openTimeStamp;
+const char* ntpServer = "pool.ntp.org";                   // NTP server
+const long  gmtOffset_sec = -18000;                       // Eastern Time Zone
+const int   daylightOffset_sec = 3600;                    // one hour
+String closeTimeStamp;                                    // thingspeak data
+String openTimeStamp;                                     // thingspeak data
 int ntpMonth;
 int ntpDay;
 int ntpYear;
 int ntpHour;
 int ntpMinute;
 int ntpSecond;
-int timeHasBeenSet = 0;
-String timeStamp;
+int timeHasBeenSet = 0;                                   // flag for only setting time on ESP32 once
+String timeStamp;                                         // used to convert time from NTP into string to send to thingspeak
 
-/*
-// Set IP address
-IPAddress local_IP(10, 4, 20, 240);                   // production IP address
-//IPAddress local_IP(192, 168, 151, 247);                   // development IP address
-IPAddress gateway(10, 4, 20, 1);
-IPAddress subnet(255, 255, 255, 0);
-IPAddress primaryDNS(8, 8, 8, 8);
-IPAddress secondaryDNS(8, 8, 4, 4);
-*/
 String header;                                            // Variable to store the HTTP request
 
 // Auxiliary variables to store the current output state
@@ -90,7 +65,7 @@ String wifiSays = "";                                     // information from we
 // ThingSpeak
 String causeCodeKey = "8VPX0I3SRBXTXRD9";                 // key for lighting monitoring at ThingSpeak
 int causeCode = 0;                                        // cause code for door movement
-String causeCodeStr = "";
+String causeCodeStr = "";                                 // cause code string to send to thingspeak
 const char* serverName = "http://api.thingspeak.com/update";
 
 // reed sensors
@@ -115,16 +90,16 @@ int doorGoingUp = 0;                                      // tracking door direc
 const int coopDoorClosedLed = 15;                         // door closed: green LED
 const int coopDoorOpenLed = 2;                            // door open: red LED
 const int coopDoorMovingLed = 4;                          // door moving/stopped: yellow LED
-const int commandToCoopLed = 25;                          // outside command coming in: green LED inside box
+const int commandToCoopLed = 25;                          // outside command coming in: blue LED inside box
 const int wifiConnected = 5;                              // wifi connected: blue LED by window
 const int wifiNotConnected = 26;                          // wifi not connected: red LED inside box
 
 // PWM
-const int freq = 5000;
+const int freq = 5000;                                    // brightness of WiFi connected LED
 const int ledChannel = 0;
 const int resolution = 8;
-int dutyCycle;
-const int ledBrightness = 30;
+int dutyCycle;                                            // variable for how bright to set blue LED
+const int ledBrightness = 90;                             // how bright when door open
 
 // local buttons
 const int localUpButton = 23;                             // up button
@@ -190,38 +165,35 @@ void setup() {
   pinMode (commandToCoopLed, OUTPUT);
   pinMode (overrideA, INPUT);
   pinMode (overrideB, INPUT);
-//  pinMode (wifiConnected, OUTPUT);
   pinMode (wifiNotConnected, OUTPUT);
 
   ledcSetup(ledChannel, freq, resolution);
   ledcAttachPin(wifiConnected, ledChannel);
 
-  Serial.begin(115200);                                     // serial monitor
+  Serial.begin(115200);                                   // serial monitor
   Serial2.begin(9600);                                    // master connection
-  Serial.println("Coop_Door_Control_v2.02 - 10/06/2019");
-  Serial.println("Serial Monitor open @ 9600");
+  Serial.print("Coop_Door_Control Version: ");
+  Serial.print(Coop_Door_Control_Version);
+  Serial.println(versionDate);
+  Serial.println("Serial Monitor open @ 115200");
   Serial.println("Master Communication open on Serial2 @ 9600");
-/*
-  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
-    Serial.println("STA Failed to configure");
-  }
-*/
+
   Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
-    digitalWrite (wifiNotConnected, HIGH);
-    Serial.print(counter);
+    digitalWrite (wifiNotConnected, HIGH);                // not connected LED
+    Serial.print(counter);                                // countdown timer
     Serial.print(".");
-    counter--;
+    counter--;                                            // decrement counter
     delay(1000);
-    if(millis() > 30000) {                              // hasn't connected to WiFi for 30 seconds
+    if(millis() > 30000) {                                // hasn't connected to WiFi for 30 seconds
       Serial.println("No WiFi connection, rebooting");
-      ESP.restart();
+      ESP.restart();                                      // restart
     }
   } 
-  digitalWrite (wifiNotConnected, LOW);
-  counter = 30;
+  digitalWrite (wifiNotConnected, LOW);                   // not connected LED
+  counter = 30;                                           // reset counter for when wifi lost
 
   // Print local IP address and start web server
   Serial.println("");
@@ -230,12 +202,12 @@ void setup() {
   Serial.println(WiFi.localIP());
   Serial.print("MAC address: ");
   Serial.println(WiFi.macAddress());
-  server.begin();
+  server.begin();                                         // open server
 // end WiFi connection section
 
   //init and get the time
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  printLocalTime();
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer); // NTP
+  printLocalTime();                                       // run void
 
   lastDebounceTime = millis();                            // start debounce tracking
   delay(debounceDelay + 50);                              // wait for delay to execute debounce
@@ -300,9 +272,9 @@ void closeCoopDoor() {                                    // close coop door
       stopCoopDoor();
     }
     debugStatus(fromCloseCoopDoor);                       // debugging
-    printLocalTime();
-    closeTimeStamp = timeStamp;
-    sendToThingSpeak(doorClosed);
+    printLocalTime();                                     // timestamp
+    closeTimeStamp = timeStamp;                           // set timestamp
+    sendToThingSpeak(doorClosed);                         // thingspeak
   }
 }
 void openCoopDoor() {                                     // open coop door
@@ -317,9 +289,9 @@ void openCoopDoor() {                                     // open coop door
       stopCoopDoor();
     }
     debugStatus(fromOpenCoopDoor);                        // debugging
-    printLocalTime();
-    openTimeStamp = timeStamp;
-    sendToThingSpeak(doorOpened);
+    printLocalTime();                                     // timestamp
+    openTimeStamp = timeStamp;                            // set timestamp
+    sendToThingSpeak(doorOpened);                         // thingspeak
   }
 }
 void doorMoving() {                                       // door is moving
@@ -343,7 +315,7 @@ void operateCoopDoor() {                                  // time to operate the
     debugStatus(fromOperateCoopDoorUp);                   // debugging
     masterSays = "";                                      // clear what the master says so only execute once
     wifiSays = "";                                        // clear what the webpage says so only execute once
-    if (masterSays == "raise coop door") {
+    if (masterSays == "raise coop door") {                // open door cause codes below
       causeCode = 100;
     } else if (buttonSaysUp == 1) {
       causeCode = 125;
@@ -358,7 +330,7 @@ void operateCoopDoor() {                                  // time to operate the
     debugStatus(fromOperateCoopDoorDown);                 // debugging
     masterSays = "";                                      // clear what the master says so only execute once
     wifiSays = "";                                        // clear what the webpage says so only execute once
-    if (masterSays == "lower coop door") {
+    if (masterSays == "lower coop door") {                // close cause codes below
       causeCode = 200;
     } else if (buttonSaysDown == 1) {
       causeCode = 225;
@@ -457,29 +429,29 @@ void coopDoorLed() {
     }
   }
   if(WiFi.status() == WL_CONNECTED) {
-    if(doorState != "closed") {                           // door is open, other LEDs are on, so it's OK to be this bright
+    if(doorState != "open") {                             // door is open, other LEDs are on, so it's OK to be this bright
       dutyCycle = 254;                                    // full brightness      
     } else {
       dutyCycle = ledBrightness;                          // reduced brightness
     }
-    digitalWrite(wifiNotConnected, LOW);
-    lostWiFi = 0;
-    counter = 30;
+    digitalWrite(wifiNotConnected, LOW);                  // not connected LED
+    lostWiFi = 0;                                         // tracking for when lost connection millis counts
+    counter = 30;                                         // timer reset
   } else {
-    if(initialLostWiFi == 0) {
-      lostWiFi = currentMillis;
-      initialLostWiFi = 1;      
+    if(initialLostWiFi == 0) {                            // only set lostWiFi tracking to currentMillis once
+      lostWiFi = currentMillis;                           // timing for countdown
+      initialLostWiFi = 1;                                // only allow lostWiFi counting to set once
       Serial.print("Lost WiFi, rebooting countdown: ");
     } else {
-      digitalWrite (wifiNotConnected, HIGH);
-      dutyCycle = 0;
-      Serial.print(counter);
-      Serial.print(".");
+      digitalWrite (wifiNotConnected, HIGH);              // not connected LED
+      dutyCycle = 0;                                      // turn LED off
+      Serial.print(counter);                              // countdown timer
+      Serial.print(".");                                  
       counter--;
       delay(1000);
-      if((currentMillis - lostWiFi) >= waitForWiFi) {                              // hasn't connected to WiFi for 30 seconds
+      if((currentMillis - lostWiFi) >= waitForWiFi) {     // hasn't connected to WiFi for 30 seconds
         Serial.println("No WiFi connection, rebooting");
-        ESP.restart();
+        ESP.restart();                                    // restart ESP32
       }
     }
   }
@@ -488,14 +460,14 @@ void coopDoorLed() {
 // automatic control
 void automaticControl() {
   if (wifiSays == "turn on automatic door control") {
-    debugStatus(fromAutomaticControlOn);                 // debugging
-    wifiSays = "";                                       // clear what the webpage says so only execute once
-    autoOpenOn = true;                                   // engage automatic door control
+    debugStatus(fromAutomaticControlOn);                  // debugging
+    wifiSays = "";                                        // clear what the webpage says so only execute once
+    autoOpenOn = true;                                    // engage automatic door control
   }
   if (wifiSays == "turn off automatic door control") {
-    debugStatus(fromAutomaticControlOff);                // debugging
-    wifiSays = "";                                       // clear what the webpage says so only execute once
-    autoOpenOn = false;                                  // disengage automatic door control
+    debugStatus(fromAutomaticControlOff);                 // debugging
+    wifiSays = "";                                        // clear what the webpage says so only execute once
+    autoOpenOn = false;                                   // disengage automatic door control
   }
 }
 
@@ -509,20 +481,20 @@ void overrideButtons() {
     Serial.println("A pressed");
   } else if (overrideAOn == HIGH){
     overrideAOn = LOW;
-    digitalWrite (doorMotorUp, LOW);                // turn off up motor
-    digitalWrite (doorMotorDown, LOW);              // turn off down motor
+    digitalWrite (doorMotorUp, LOW);                      // turn off up motor
+    digitalWrite (doorMotorDown, LOW);                    // turn off down motor
     Serial.println("A released");
   }
   overrideBPressed = digitalRead(overrideB);              // read the top button state
   if (overrideBPressed == HIGH) {
-    digitalWrite (doorMotorUp, LOW);                     // turn on up motor
-    digitalWrite (doorMotorDown, HIGH);                    // turn off down motor
+    digitalWrite (doorMotorUp, LOW);                      // turn on up motor
+    digitalWrite (doorMotorDown, HIGH);                   // turn off down motor
     overrideBOn = HIGH;
     Serial.println("B pressed");
   } else if (overrideBOn == HIGH){
     overrideBOn = LOW;
-    digitalWrite (doorMotorUp, LOW);                // turn off up motor
-    digitalWrite (doorMotorDown, LOW);              // turn off down motor
+    digitalWrite (doorMotorUp, LOW);                      // turn off up motor
+    digitalWrite (doorMotorDown, LOW);                    // turn off down motor
     Serial.println("B released");
   }
 }
@@ -588,7 +560,7 @@ void wifiProcessing() {
             } else if (header.indexOf("GET /4/on") >= 0) {// the raise coop door button was pressed
                 wifiSays = "raise coop door";               
             } else if (header.indexOf("GET /7/on") >=0) { // the stop connection button was pressed
-                client.stop();                                        // Close the connection
+                client.stop();                            // Close the connection
                 Serial.println("Client closed connection");
             } else if (header.indexOf("GET /8/on") >=0) { // engage automatic door control - listen to the master
                 wifiSays = "turn on automatic door control";
@@ -660,15 +632,15 @@ void wifiProcessing() {
           currentLine += c;                               // add it to the end of the currentLine
         }
       }
-      currentMillis = millis();                               // reset timing reference
-      recWithEndMarker();                                     // look for new instructions from master
-      masterSaysNewData();                                    // process new instructions from master
-      sendToMaster();                                         // send responses back to master
-      coopDoorLed();                                          // LED feedback processing
-      operateCoopDoor();                                      // instructions to operate door
-      doorMoving();                                           // door is moving, look to stop
-      localButtons();                                         // local button presses
-      automaticControl();                                     // monitor for transition between auto door mode and manual mode
+      currentMillis = millis();                           // reset timing reference
+      recWithEndMarker();                                 // look for new instructions from master
+      masterSaysNewData();                                // process new instructions from master
+      sendToMaster();                                     // send responses back to master
+      coopDoorLed();                                      // LED feedback processing
+      operateCoopDoor();                                  // instructions to operate door
+      doorMoving();                                       // door is moving, look to stop
+      localButtons();                                     // local button presses
+      automaticControl();                                 // monitor for transition between auto door mode and manual mode
     }
     header = "";                                          // Clear the header variable
     client.stop();                                        // Close the connection
@@ -681,21 +653,21 @@ void sendToThingSpeak(int status) {
   HTTPClient http;
   http.begin(serverName);
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-  causeCodeStr = "api_key=";
-  causeCodeStr += causeCodeKey;
+  causeCodeStr = "api_key=";                              // thingspeak string development
+  causeCodeStr += causeCodeKey;                           
   causeCodeStr +="&field6=";
   causeCodeStr +=String(causeCode);
-  switch (status) {
-    case doorOpened:
+  switch (status) {                                       
+    case doorOpened:                                      // thingspeak for door open
       causeCodeStr +="&field8=";
       causeCodeStr +=String(openTimeStamp);
       break;
-    case doorClosed:
+    case doorClosed:                                      // thingspeak for door closed
       causeCodeStr +="&field7=";
       causeCodeStr +=String(closeTimeStamp);
       break;
   }
-  int httpResponseCode = http.POST(causeCodeStr);
+  int httpResponseCode = http.POST(causeCodeStr);         // post string to thingspeak
   Serial.print("cause code to ThingSpeak: ");
   Serial.println(causeCode);
   Serial.print("string to ThingSpeak: ");
@@ -848,29 +820,11 @@ void debugStatus(int fromCall) {
 
 void printLocalTime()
 {
-  tm timeinfo;
+  struct tm timeinfo;                                     // gather time information
   if(!getLocalTime(&timeinfo)){
     Serial.println("Failed to obtain time");
     return;
   }
-  /* time info formatting:
-   *  https://en.cppreference.com/w/c/chrono/strftime
-   *  %A = Full weekday name
-   *  %a = Abbreviated weekday name
-   *  %B = Full month name
-   *  %m = Month as decimal number
-   *  %b = Abbreviated month name
-   *  %d = Day of the month
-   *  %0d = zero based Day of the month
-   *  %j = Day of the year
-   *  %U = Week of the year (sunday first day of week)
-   *  %Y = 4 digit year
-   *  %y = 2 digit year
-   *  %H = Hour in 24h format
-   *  %I = Hour in 12h format
-   *  %M = Minute
-   *  %S = Second
-  */
   Serial.println(&timeinfo, "%A, %m/%d/%Y %H:%M:%S");
   ntpMonth = timeinfo.tm_mon +1;
   ntpDay = timeinfo.tm_mday;
@@ -878,22 +832,22 @@ void printLocalTime()
   ntpHour = timeinfo.tm_hour;
   ntpMinute = timeinfo.tm_min;
   ntpSecond = timeinfo.tm_sec;
-  if (timeHasBeenSet == 0) {
+  if (timeHasBeenSet == 0) {                              // only set time once
     setTime(ntpHour,ntpMinute,ntpSecond,ntpDay,ntpMonth,ntpYear);
-    timeHasBeenSet = 1;
+    timeHasBeenSet = 1;                                   // time setting flag
   }
   if(ntpHour < 10) {
-    timeStamp = String("0") + String(ntpHour);
+    timeStamp = String("0") + String(ntpHour);            // adding leading zero, thingspeak ignores leading zero for hour
   } else {
     timeStamp = String(ntpHour);
   }
   if(ntpMinute < 10) {
-    timeStamp += String("0") + String(ntpMinute);
+    timeStamp += String("0") + String(ntpMinute);         // adding leading zero
   } else {
     timeStamp += String(ntpMinute);
   }
   if (ntpSecond <10) {
-    timeStamp += String("0") + String(ntpSecond);
+    timeStamp += String("0") + String(ntpSecond);         // adding leadiner zero
   } else {
     timeStamp +=  String(ntpSecond);
   }
@@ -901,13 +855,13 @@ void printLocalTime()
 
 void printDigits(int digits){
   // utility for digital clock display: prints preceding colon and leading 0
-  Serial.print(":");
+  Serial.print(":");                                      // add colon between minutes and seconds
   if(digits < 10)
-    Serial.print('0');
+    Serial.print('0');                                    // adding zero
   Serial.print(digits);
 }
 void loop() {
-  ledcWrite(ledChannel, dutyCycle);
+  ledcWrite(ledChannel, dutyCycle);                       // WiFi connected LED PWM control
   currentMillis = millis();                               // reset timing reference
   recWithEndMarker();                                     // look for new instructions from master
   masterSaysNewData();                                    // process new instructions from master
