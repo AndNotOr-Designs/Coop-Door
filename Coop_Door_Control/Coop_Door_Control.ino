@@ -5,7 +5,7 @@
 // Programmer: "AVRISP mkll"
 
 // version information - reference in README.md
-const signed long Coop_Door_Control_Version = 2.05;       
+const signed long Coop_Door_Control_Version = 2.06;       
 const String versionDate = "11/23/2020";                  
 
 /* Loading note:
@@ -99,7 +99,8 @@ const int freq = 5000;                                    // brightness of WiFi 
 const int ledChannel = 0;
 const int resolution = 8;
 int dutyCycle;                                            // variable for how bright to set blue LED
-const int ledBrightness = 90;                             // how bright when door open
+const int ledBrightness = 100;                            // how bright when door open
+String ambientLightSensorLevel = "";                      // light level from master (Dark, Twilight, Light)
 
 // local buttons
 const int localUpButton = 23;                             // up button
@@ -313,8 +314,6 @@ void doorMoving() {                                       // door is moving
 void operateCoopDoor() {                                  // time to operate the coop door somehow
   if ((masterSays == "raise coop door") || (buttonSaysUp == 1) || (wifiSays == "raise coop door")) {
     debugStatus(fromOperateCoopDoorUp);                   // debugging
-    masterSays = "";                                      // clear what the master says so only execute once
-    wifiSays = "";                                        // clear what the webpage says so only execute once
     if (masterSays == "raise coop door") {                // open door cause codes below
       causeCode = 100;
     } else if (buttonSaysUp == 1) {
@@ -324,12 +323,12 @@ void operateCoopDoor() {                                  // time to operate the
     } else {
       causeCode = 175;
     }
+    masterSays = "";                                      // clear what the master says so only execute once
+    wifiSays = "";                                        // clear what the webpage says so only execute once
     openCoopDoor();                                       // open the door
   }
   if ((masterSays == "lower coop door") || (buttonSaysDown == 1) || (wifiSays == "lower coop door")) {
     debugStatus(fromOperateCoopDoorDown);                 // debugging
-    masterSays = "";                                      // clear what the master says so only execute once
-    wifiSays = "";                                        // clear what the webpage says so only execute once
     if (masterSays == "lower coop door") {                // close cause codes below
       causeCode = 200;
     } else if (buttonSaysDown == 1) {
@@ -339,6 +338,8 @@ void operateCoopDoor() {                                  // time to operate the
     } else {
       causeCode = 275;
     }
+    masterSays = "";                                      // clear what the master says so only execute once
+    wifiSays = "";                                        // clear what the webpage says so only execute once
     closeCoopDoor();                                      // close the door
   }
   if ((masterSays == "stop coop door")  || (buttonSaysStop == 1) || (wifiSays == "stop coop door")) {
@@ -429,10 +430,12 @@ void coopDoorLed() {
     }
   }
   if(WiFi.status() == WL_CONNECTED) {
-    if(doorState != "open") {                             // door is open, other LEDs are on, so it's OK to be this bright
-      dutyCycle = 254;                                    // full brightness      
-    } else {
-      dutyCycle = ledBrightness;                          // reduced brightness
+    if(ambientLightSensorLevel == "dark>") {              // light level from master
+      dutyCycle = 100;                                    // min brightness      
+    } else if (ambientLightSensorLevel == "light>") {     // light level from master
+      dutyCycle = 255;                                    // full brightness
+    } else if (ambientLightSensorLevel == "twilight>") {  // light level from master
+      dutyCycle = 150;                                    // medium brightness
     }
     digitalWrite(wifiNotConnected, LOW);                  // not connected LED
     lostWiFi = 0;                                         // tracking for when lost connection millis counts
@@ -511,6 +514,10 @@ void masterSaysNewData() {                                // new instructions fr
   if (newData == true) {
     debugStatus(fromMasterSaysNewData);                   // debugging
     newData = false;                                      // reset reference
+  }
+  if ((masterSays == "Dark>") || (masterSays == "Twilight>") || (masterSays == "Light>")) {
+    ambientLightSensorLevel = masterSays;
+    masterSays = "";
   }
 }
 void recWithEndMarker() {                                 // process strings from master
