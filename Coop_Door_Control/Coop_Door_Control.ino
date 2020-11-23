@@ -465,11 +465,11 @@ void coopDoorLed() {
     }
   }
   if(WiFi.status() == WL_CONNECTED) {
-    if(ambientLightSensorLevel == "dark>") {              // light level from master
+    if(ambientLightSensorLevel == "Dark") {              // light level from master
       dutyCycle = 100;                                    // min brightness      
-    } else if (ambientLightSensorLevel == "light>") {     // light level from master
+    } else if (ambientLightSensorLevel == "Light") {     // light level from master
       dutyCycle = 255;                                    // full brightness
-    } else if (ambientLightSensorLevel == "twilight>") {  // light level from master
+    } else if (ambientLightSensorLevel == "Twilight") {  // light level from master
       dutyCycle = 150;                                    // medium brightness
     }
     digitalWrite(wifiNotConnected, LOW);                  // not connected LED
