@@ -5,7 +5,7 @@
 // Programmer: "AVRISP mkll"
 
 // version information - reference in README.md
-const signed long Coop_Door_Control_Version = 2.06;       
+const float Coop_Door_Control_Version = 2.06;       
 const String versionDate = "11/23/2020";                  
 
 /* Loading note:
@@ -173,15 +173,45 @@ void setup() {
 
   Serial.begin(115200);                                   // serial monitor
   Serial2.begin(9600);                                    // master connection
-  Serial.print("Coop_Door_Control Version: ");
-  Serial.print(Coop_Door_Control_Version);
-  Serial.println(versionDate);
-  Serial.println("Serial Monitor open @ 115200");
-  Serial.println("Master Communication open on Serial2 @ 9600");
 
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
+// serial monitor header
+  Serial.println();
+  Serial.println("/- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\\");
+  Serial.print("|                                 Coop Door Control v");
+  Serial.print(Coop_Door_Control_Version);
+  Serial.println("                                   |");
+  Serial.print("|                                     --");
+  Serial.print(versionDate);
+  Serial.println("--                                        |");
+  Serial.println("|                                         And!Or                                            |");
+  Serial.println("|                                                                                           |");
+  Serial.print("| Debug Status: ");
+  if (debugOn == true) {
+    Serial.print("on, Super Debug Status: ");
+    if (superDebugOn == true) {
+      Serial.println("on                                                  |");
+    }
+    else {
+      Serial.println("off                                                 |");
+    }
+  }
+  else {
+    Serial.print("off, Super Debug Status: ");
+    if (superDebugOn == true) {
+      Serial.println("on                                                 |");
+    }
+    else {
+      Serial.println("off                                                |");
+    }
+  }
+  Serial.println("| Serial 2 = Coop Door Control connection @9600                                             |");
+  Serial.println("|                                                                                           |");
+
+  Serial.print("| Connecting to: ");
+  Serial.print(ssid);
+  Serial.println("                                                                    |");
   WiFi.begin(ssid, password);
+  Serial.print("| ");
   while (WiFi.status() != WL_CONNECTED) {
     digitalWrite (wifiNotConnected, HIGH);                // not connected LED
     Serial.print(counter);                                // countdown timer
@@ -189,26 +219,31 @@ void setup() {
     counter--;                                            // decrement counter
     delay(1000);
     if(millis() > 30000) {                                // hasn't connected to WiFi for 30 seconds
-      Serial.println("No WiFi connection, rebooting");
+      Serial.println("         |");
+      Serial.println("| No WiFi connection, rebooting                                                             |");
       ESP.restart();                                      // restart
     }
   } 
+  Serial.println(" WiFi Connected");
+  Serial.print("| IP Address: ");
+  Serial.print(WiFi.localIP());
+  Serial.println("                                                                   |");
+  Serial.print("| MAC address: ");
+  Serial.print(WiFi.macAddress());
+  Serial.println("                                                            |");
+  Serial.println("|                                                                                           |");
   digitalWrite (wifiNotConnected, LOW);                   // not connected LED
   counter = 30;                                           // reset counter for when wifi lost
-
-  // Print local IP address and start web server
-  Serial.println("");
-  Serial.println("WiFi connected.");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-  Serial.print("MAC address: ");
-  Serial.println(WiFi.macAddress());
-  server.begin();                                         // open server
-// end WiFi connection section
+  Serial.println("\\- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -/");
+// end serial monitor header
 
   //init and get the time
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer); // NTP
-  printLocalTime();                                       // run void
+  Serial.print("  - ");
+  printLocalTime();                                       // show current time
+  Serial.println();
+
+  server.begin();                                         // open server
 
   lastDebounceTime = millis();                            // start debounce tracking
   delay(debounceDelay + 50);                              // wait for delay to execute debounce

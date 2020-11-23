@@ -3,6 +3,8 @@
 2.06 11/23/20
 -  ambientLightSensorLevel from master to control WiFi connected LED
 - sets format of timeStamp by adding a dot between minutes and seconds
+- standarized serial monitor header with coop control
+- changed version from signed long to a float - this allows the decimal point in the variable for serial monitor header
 
 2.05 - 11/22/2020
 - LED for wireless active 
@@ -15,7 +17,7 @@
 		175 = raise section, none of the above 
 		200 = master says lower door 
 		225 = button says down 
-		250 = lower coop door 
+		250 = wifi says lower coop door 
 		275 = lower section, none of the above 
 - removed comments for setting static IP:
 		// Set IP address
