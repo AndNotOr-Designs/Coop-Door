@@ -5,7 +5,7 @@
 // Programmer: "AVRISP mkll"
 
 // version information - reference in README.md
-const float Coop_Door_Control_Version = 2.06;       
+const float Coop_Door_Control_Version = 2.07;       
 const String versionDate = "11/23/2020";                  
 
 /* Loading note:
@@ -630,28 +630,33 @@ void wifiProcessing() {
 
             // Web Page Heading
             client.println("<body bgcolor=\"#000000\"><h1><p style=\"color:white\">Coop Door Control</p></h1>");
-            
+
             if (doorState=="open") {
               client.println("<h2><p style=\"color:purple\">Door State: <span style=\"color: red\">" + doorState + "</span></p></h2>");
-              client.println("<p><a href=\"/4/off\"><button class=\"button2\">door is open</button></a></p>");
-              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
-              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
+//              client.println("<p><a href=\"/4/off\"><button class=\"button2\">door is open</button></a></p>");
+//              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
+//              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
             } else if (doorState=="closed") {
               client.println("<h2><p style=\"color:purple\">Door State: <span style=\"color:green\">"+ doorState + "</span></p></h2>");
-              client.println("<p><a href=\"/4/on\"><button class=\"button\">press to open door</button></a></p>");
-              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
-              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is closed</button></a></p>");
+//              client.println("<p><a href=\"/4/on\"><button class=\"button\">press to open door</button></a></p>");
+//              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
+//              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is closed</button></a></p>");
             } else if (doorState=="moving") {
               client.println("<h2><p style=\"color:purple\">Door State: <span style=\"color:yellow\">"+ doorState + "</span></p></h2>");
-              client.println("<p><a href=\"/4/off\"><button class=\"button2\">door is moving</button></a></p>");
-              client.println("<p><a href=\"/5/on\"><button class=\"button\">press to stop door</button></a></p>");
-              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is moving</button></a></p>");
+//              client.println("<p><a href=\"/4/off\"><button class=\"button2\">door is moving</button></a></p>");
+//              client.println("<p><a href=\"/5/on\"><button class=\"button\">press to stop door</button></a></p>");
+//              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is moving</button></a></p>");
             } else {
               client.println("<h2><p style=\"color:purple\">Door State: <span style=\"color:orange\">"+ doorState + "</span></p></h2>");
-              client.println("<p><a href=\"/4/on\"><button class=\"button\">press to open door</button></a></p>");
-              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
-              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
+//              client.println("<p><a href=\"/4/on\"><button class=\"button\">press to open door</button></a></p>");
+//              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
+//              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
             }
+
+            client.println("<p><a href=\"/4/on\"><button class=\"button\">open</button></a></p>");
+            client.println("<p><a href=\"/5/on\"><button class=\"button\">stop</button></a></p>");
+            client.println("<p><a href=\"/6/on\"><button class=\"button\">close</button></a></p>");
+
             client.println("<hr width=\"50%\"><p></p>");
             if (autoOpenOn == true) {
               client.println("<a href=\"/8/off\"><button class=\"button4\">Automatic Mode</button>");

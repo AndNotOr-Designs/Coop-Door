@@ -1,5 +1,8 @@
 # Coop-Door
 
+2.07 11/24/20
+- changed web page to not have bi-directional buttons for open/stop/close. still use the feedback to the text above the buttons
+
 2.06 11/23/20
 -  ambientLightSensorLevel from master to control WiFi connected LED
 - sets format of timeStamp by adding a dot between minutes and seconds
