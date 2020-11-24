@@ -6,7 +6,7 @@
 
 // version information - reference in README.md
 const float Coop_Door_Control_Version = 2.07;       
-const String versionDate = "11/23/2020";                  
+const String versionDate = "11/24/2020";                  
 
 /* Loading note:
 - If you get the "Failed to connect to ESP32: Timed out... Connecting..." error when trying to upload code, it means that your ESP32 is not in flashing/uploading mode.
@@ -18,11 +18,11 @@ const String versionDate = "11/23/2020";
 #include <HTTPClient.h>                                   // for ThingSpeak
 #include "TimeLib.h"                                      // NTP
 
-boolean debugOn = true;                                  // debugging flag
-boolean superDebugOn = true;                             // verbose debugging does cause a delay in button push response
+boolean debugOn = false;                                  // debugging flag
+boolean superDebugOn = false;                             // verbose debugging does cause a delay in button push response
 boolean debugWithDelay = false;                           // adds 10 second delay to verbose debugging - causes issues with debouncing!
 
-boolean autoOpenOn = true;                                // switch for tracking whether to listen to commands from master or not
+volatile boolean autoOpenOn = true;                       // switch for tracking whether to listen to commands from master or not
 
 // blinking timer
 unsigned long currentMillis = 0;                          // reference
@@ -223,7 +223,7 @@ void setup() {
       ESP.restart();                                      // restart
     }
   } 
-  Serial.println(" WiFi Connected");
+  Serial.println(" WiFi Connected                                                                        |");
   Serial.print("| IP Address: ");
   Serial.print(WiFi.localIP());
   Serial.println("                                                                   |");
@@ -613,17 +613,21 @@ void wifiProcessing() {
             client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
             client.println("<link rel=\"icon\" href=\"data:,\">");
             // CSS to style the on/off buttons 
-            client.println("<style>html { font-family: arial; display: inline-block; margin: 0px auto; text-align: center;}");
-            client.println(".button {background-color: #007000; border-radius: 38px; border: 3px solid #4b8f29; color: white; padding: 14px 40px;");
-            client.println("text-decoration: none; font-size: 25px; width: 300px; margin: 2px; cursor: pointer;}");
-            client.println(".button2 {background-color: #555555; border-radius: 38px; border: 3px solid #4b8f29; color: white; padding: 14px 40px;");
-            client.println("text-decoration: none; font-size: 25px; width: 300px; margin: 2px; cursor: pointer;}");
-            client.println(".button3 {background-color: #aa0000; border-radius: 19px; border: none; color: white; padding: 8px 40px;");
+            client.println("<style>html {font-family: arial; display: inline-block; margin: 0px auto; text-align: center;}");
+            client.println("hr.dashed {border-top: 2px dashed #641aa1; boarder-radius: 1px; width: 310px; margin-left: auto; margin-right: auto;}");
+            client.println("hr.solid {border-top: 5px solid #641aa1; boarder-radius: 2px; width: 350px; margin-left: auto; margin-right: auto;}");
+            client.println(".button {background-color: #EDAA3E; border-radius: 38px; border: none; padding: 14px 40px;"); // yellow
+            client.println("text-decoration: none; font-size: 25px; color: #641AA1; width: 300px; margin: 2px; cursor: pointer;}");
+            client.println(".button1 {background-color: #0EED63; border-radius: 38px; border: none; padding: 14px 40px;"); // red
+            client.println("text-decoration: none; font-size: 25px; color: #641AA1; width: 300px; margin: 2px; cursor: pointer;}");
+            client.println(".button2 {background-color: #12A148; border-radius: 38px; border: none; padding: 14px 40px;"); // blue
+            client.println("text-decoration: none; font-size: 25px; color: #641AA1; width: 300px; margin: 2px; cursor: pointer;}");
+            client.println(".button3 {background-color: #aa0000; border-radius: 19px; border: none; padding: 8px 40px;");
             client.println("text-decoration: none; font-size: 15px; width: 200px; margin: 2px; cursor: pointer;}");
-            client.println(".button4 {box-shadow:inset 0px -3px 7px 0px #020f00; background-color: #aa00ff; background:linear-gradient(to bottom, #aa00ff 5%, #5a18bd 100%); border-radius: 42px; border: 2px solid #18ab29;");
-            client.println("color: #ffebff; padding: 8px 40px; text-decoration: none; font-size: 15px; font-weight:bold; width: 300px; margin: 2px; cursor: pointer; text-shadow:0px 1px 0px #020f00;}");
-            client.println(".button5 {box-shadow:inset 0px -3px 7px 0px #020f00; background-color: #ff005e; border-radius: 42px; border: 2px solid #aa00ff;");
-            client.println("color: #ffebff; padding: 8px 40px; text-decoration: none; font-size: 15px; width: 300px; margin: 2px; cursor: pointer; text-shadow:0px 1px 0px #020f00;}</style>");
+            client.println(".button4 {background-color: #9426ED; border-radius: 42px; border: 2px solid #EDAA3E; color: #ffebff; padding: 8px 40px;");
+            client.println("text-decoration: none; font-size: 15px; color: #cccccc; font-weight:bold; width: 300px; margin: 2px; cursor: pointer}");
+            client.println(".button5 {background-color: #EDAA3E; border-radius: 42px; border: 2px solid #9426ED; color: #ffebff; padding: 8px 40px;");
+            client.println("text-decoration: none; font-size: 15px; color: #aa0000; width: 300px; margin: 2px; cursor: pointer}</style>");
 
             // set page to refresh every CONTENT seconds
             client.println("<META HTTP-EQUIV=\"refresh\" CONTENT= \"15\"></head>");
@@ -632,38 +636,38 @@ void wifiProcessing() {
             client.println("<body bgcolor=\"#000000\"><h1><p style=\"color:white\">Coop Door Control</p></h1>");
 
             if (doorState=="open") {
-              client.println("<h2><p style=\"color:purple\">Door State: <span style=\"color: red\">" + doorState + "</span></p></h2>");
+              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#EDAA3E\">" + doorState + "</span></p></h2>");
 //              client.println("<p><a href=\"/4/off\"><button class=\"button2\">door is open</button></a></p>");
 //              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
 //              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
             } else if (doorState=="closed") {
-              client.println("<h2><p style=\"color:purple\">Door State: <span style=\"color:green\">"+ doorState + "</span></p></h2>");
+              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#12A148\">"+ doorState + "</span></p></h2>");
 //              client.println("<p><a href=\"/4/on\"><button class=\"button\">press to open door</button></a></p>");
 //              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
 //              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is closed</button></a></p>");
             } else if (doorState=="moving") {
-              client.println("<h2><p style=\"color:purple\">Door State: <span style=\"color:yellow\">"+ doorState + "</span></p></h2>");
+              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#0EED63\">"+ doorState + "</span></p></h2>");
 //              client.println("<p><a href=\"/4/off\"><button class=\"button2\">door is moving</button></a></p>");
 //              client.println("<p><a href=\"/5/on\"><button class=\"button\">press to stop door</button></a></p>");
 //              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is moving</button></a></p>");
             } else {
-              client.println("<h2><p style=\"color:purple\">Door State: <span style=\"color:orange\">"+ doorState + "</span></p></h2>");
+              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#0EED63\">"+ doorState + "</span></p></h2>");
 //              client.println("<p><a href=\"/4/on\"><button class=\"button\">press to open door</button></a></p>");
 //              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
 //              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
             }
 
             client.println("<p><a href=\"/4/on\"><button class=\"button\">open</button></a></p>");
-            client.println("<p><a href=\"/5/on\"><button class=\"button\">stop</button></a></p>");
-            client.println("<p><a href=\"/6/on\"><button class=\"button\">close</button></a></p>");
+            client.println("<p><a href=\"/5/on\"><button class=\"button1\">stop</button></a></p>");
+            client.println("<p><a href=\"/6/on\"><button class=\"button2\">close</button></a></p>");
 
-            client.println("<hr width=\"50%\"><p></p>");
+            client.println("<hr class=\"dashed /\"><p></p>");
             if (autoOpenOn == true) {
               client.println("<a href=\"/8/off\"><button class=\"button4\">Automatic Mode</button>");
             } else if (autoOpenOn == false) {
               client.println("<a href=\"/8/on\"><button class=\"button5\">Manual Mode</button>");
             }
-            client.println("<hr width=\"85%\"><p></p>");
+            client.println("<hr class=\"solid /\"><p></p>");
             client.println("<p><img src=\"http://liskfamilycom.ipage.com/files/look_right.jpg\" style=\"width:50px\"  align=\"middle\">");
             client.println("<a href=\"/7/on\"><button class=\"button3\">close connection</button>");
             client.println("<img src=\"http://liskfamilycom.ipage.com/files/look_left.jpg\" style=\"width:50px\" align=\"middle\"></a></p>");
@@ -695,6 +699,7 @@ void wifiProcessing() {
 }
 
 void sendToThingSpeak(int status) {
+/*  
   HTTPClient http;
   http.begin(serverName);
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -720,8 +725,8 @@ void sendToThingSpeak(int status) {
   Serial.print("HTTP Response code: ");
   Serial.println(httpResponseCode);
   http.end();
+*/
 }
-
 void debugStatus(int fromCall) {
   if (debugOn == true) {
     Serial.println("- - - - - - - - - -");

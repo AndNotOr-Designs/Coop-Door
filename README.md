@@ -2,6 +2,8 @@
 
 2.07 11/24/20
 - changed web page to not have bi-directional buttons for open/stop/close. still use the feedback to the text above the buttons
+- made autoOpenOn a volatile variable
+
 
 2.06 11/23/20
 -  ambientLightSensorLevel from master to control WiFi connected LED
