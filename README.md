@@ -1,8 +1,11 @@
 # Coop-Door
 
-2.07 11/24/20
+2.07 11/27/20
 - changed web page to not have bi-directional buttons for open/stop/close. still use the feedback to the text above the buttons
 - made autoOpenOn a volatile variable
+- removes refresh on web page
+	- this was to help prevent the random raising/closing doors that was happening
+
 
 
 2.06 11/23/20

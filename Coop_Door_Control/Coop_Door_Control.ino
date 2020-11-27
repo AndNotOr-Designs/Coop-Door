@@ -6,7 +6,7 @@
 
 // version information - reference in README.md
 const float Coop_Door_Control_Version = 2.07;       
-const String versionDate = "11/24/2020";                  
+const String versionDate = "11/27/2020";                  
 
 /* Loading note:
 - If you get the "Failed to connect to ESP32: Timed out... Connecting..." error when trying to upload code, it means that your ESP32 is not in flashing/uploading mode.
@@ -629,9 +629,10 @@ void wifiProcessing() {
             client.println(".button5 {background-color: #EDAA3E; border-radius: 42px; border: 2px solid #9426ED; color: #ffebff; padding: 8px 40px;");
             client.println("text-decoration: none; font-size: 15px; color: #aa0000; width: 300px; margin: 2px; cursor: pointer}</style>");
 
-            // set page to refresh every CONTENT seconds
-            client.println("<META HTTP-EQUIV=\"refresh\" CONTENT= \"15\"></head>");
-
+            // set page to refresh every CONTENT seconds  // removed in 2.07 - see readme.md
+            //client.println("<META HTTP-EQUIV=\"refresh\" CONTENT= \"15\"></head>");
+            client.println("</head>");
+            
             // Web Page Heading
             client.println("<body bgcolor=\"#000000\"><h1><p style=\"color:white\">Coop Door Control</p></h1>");
 
