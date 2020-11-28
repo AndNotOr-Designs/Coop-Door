@@ -5,8 +5,8 @@
 // Programmer: "AVRISP mkll"
 
 // version information - reference in README.md
-const float Coop_Door_Control_Version = 2.07;       
-const String versionDate = "11/27/2020";                  
+const float Coop_Door_Control_Version = 2.08;       
+const String versionDate = "11/28/2020";                  
 
 /* Loading note:
 - If you get the "Failed to connect to ESP32: Timed out... Connecting..." error when trying to upload code, it means that your ESP32 is not in flashing/uploading mode.
@@ -18,6 +18,7 @@ const String versionDate = "11/27/2020";
 #include <HTTPClient.h>                                   // for ThingSpeak
 #include "TimeLib.h"                                      // NTP
 
+boolean thingSpeakOff = false;                            // turning thingspeak off for testing purposes - no tweeting!
 boolean debugOn = false;                                  // debugging flag
 boolean superDebugOn = false;                             // verbose debugging does cause a delay in button push response
 boolean debugWithDelay = false;                           // adds 10 second delay to verbose debugging - causes issues with debouncing!
@@ -63,8 +64,9 @@ String doorState = "";                                    // status of door for 
 String wifiSays = "";                                     // information from webpage
 
 // ThingSpeak
-String causeCodeKey = "8VPX0I3SRBXTXRD9";                 // key for lighting monitoring at ThingSpeak
+String causeCodeKey = "EJRMOL3HEPPP8B3T";                 // key for lighting monitoring at ThingSpeak
 int causeCode = 0;                                        // cause code for door movement
+String causeCodeText = "";                                // cause code text
 String causeCodeStr = "";                                 // cause code string to send to thingspeak
 const char* serverName = "http://api.thingspeak.com/update";
 
@@ -350,12 +352,16 @@ void operateCoopDoor() {                                  // time to operate the
     debugStatus(fromOperateCoopDoorUp);                   // debugging
     if (masterSays == "raise coop door") {                // open door cause codes below
       causeCode = 100;
+      causeCodeText = "react: masterSays raise coop door";
     } else if (buttonSaysUp == 1) {
       causeCode = 125;
+      causeCodeText = "react: buttonSaysup raise coop door";
     } else if (wifiSays == "raise coop door") {
       causeCode = 150;
+      causeCodeText = "react: wifiSays rasie coop door";
     } else {
       causeCode = 175;
+      causeCodeText = "react: raise door unknown";
     }
     masterSays = "";                                      // clear what the master says so only execute once
     wifiSays = "";                                        // clear what the webpage says so only execute once
@@ -365,12 +371,16 @@ void operateCoopDoor() {                                  // time to operate the
     debugStatus(fromOperateCoopDoorDown);                 // debugging
     if (masterSays == "lower coop door") {                // close cause codes below
       causeCode = 200;
+      causeCodeText = "react: masterSays lower coop door";
     } else if (buttonSaysDown == 1) {
       causeCode = 225;
+      causeCodeText = "react: buttonSaysDown lower coop door";
     } else if (wifiSays == "lower coop door") {
       causeCode = 250;
+      causeCodeText = "react: wifisays lower coop door";
     } else {
       causeCode = 275;
+      causeCodeText = "react: lower door unknown";
     }
     masterSays = "";                                      // clear what the master says so only execute once
     wifiSays = "";                                        // clear what the webpage says so only execute once
@@ -700,34 +710,37 @@ void wifiProcessing() {
 }
 
 void sendToThingSpeak(int status) {
-/*  
-  HTTPClient http;
-  http.begin(serverName);
-  http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-  causeCodeStr = "api_key=";                              // thingspeak string development
-  causeCodeStr += causeCodeKey;                           
-  causeCodeStr +="&field6=";
-  causeCodeStr +=String(causeCode);
-  switch (status) {                                       
-    case doorOpened:                                      // thingspeak for door open
-      causeCodeStr +="&field8=";
-      causeCodeStr +=String(openTimeStamp);
-      break;
-    case doorClosed:                                      // thingspeak for door closed
-      causeCodeStr +="&field7=";
-      causeCodeStr +=String(closeTimeStamp);
-      break;
+  if(thingSpeakOff == false) {
+    HTTPClient http;
+    http.begin(serverName);
+    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+    causeCodeStr = "api_key=";                              // thingspeak string development
+    causeCodeStr += causeCodeKey;                           
+    causeCodeStr +="&field1=";
+    causeCodeStr +=String(causeCode);
+    causeCodeStr +="&field2=";
+    causeCodeStr +=String(causeCodeText);
+    switch (status) {                                       
+      case doorOpened:                                      // thingspeak for door open
+        causeCodeStr +="&field3=";
+        causeCodeStr +=String(openTimeStamp);
+        break;
+      case doorClosed:                                      // thingspeak for door closed
+        causeCodeStr +="&field4=";
+        causeCodeStr +=String(closeTimeStamp);
+        break;
+    }
+    int httpResponseCode = http.POST(causeCodeStr);         // post string to thingspeak
+    Serial.print("cause code to ThingSpeak: ");
+    Serial.println(causeCode);
+    Serial.print("string to ThingSpeak: ");
+    Serial.println(causeCodeStr);
+    Serial.print("HTTP Response code: ");
+    Serial.println(httpResponseCode);
+    http.end();
   }
-  int httpResponseCode = http.POST(causeCodeStr);         // post string to thingspeak
-  Serial.print("cause code to ThingSpeak: ");
-  Serial.println(causeCode);
-  Serial.print("string to ThingSpeak: ");
-  Serial.println(causeCodeStr);
-  Serial.print("HTTP Response code: ");
-  Serial.println(httpResponseCode);
-  http.end();
-*/
 }
+
 void debugStatus(int fromCall) {
   if (debugOn == true) {
     Serial.println("- - - - - - - - - -");

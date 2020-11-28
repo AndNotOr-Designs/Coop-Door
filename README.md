@@ -1,5 +1,12 @@
 # Coop-Door
 
+2.08 11/28/20
+- changed to seperate ThingSpeak channel to help seperate the amount of data being sent
+- version 2.07 had thingspeak commented out when loaded - had that commented out becuase of testing, just forgot to uncomment...
+- attempting to send cause code text instead of a code to help with tweeting to understand without having to open readme.md file "causeCodeText"
+
+
+
 2.07 11/27/20
 - changed web page to not have bi-directional buttons for open/stop/close. still use the feedback to the text above the buttons
 - made autoOpenOn a volatile variable
