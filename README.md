@@ -4,7 +4,7 @@
 - changed to seperate ThingSpeak channel to help seperate the amount of data being sent
 - version 2.07 had thingspeak commented out when loaded - had that commented out becuase of testing, just forgot to uncomment...
 - attempting to send cause code text instead of a code to help with tweeting to understand without having to open readme.md file "causeCodeText"
-
+- adds thingSpeakOff to allow for easier turning tweeting off/on
 
 
 2.07 11/27/20
@@ -12,8 +12,6 @@
 - made autoOpenOn a volatile variable
 - removes refresh on web page
 	- this was to help prevent the random raising/closing doors that was happening
-
-
 
 2.06 11/23/20
 -  ambientLightSensorLevel from master to control WiFi connected LED
