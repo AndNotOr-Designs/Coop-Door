@@ -5,8 +5,8 @@
 // Programmer: "AVRISP mkll"
 
 // version information - reference in README.md
-const float Coop_Door_Control_Version = 2.08;       
-const String versionDate = "11/28/2020";                  
+const float Coop_Door_Control_Version = 2.09;       
+const String versionDate = "12/--/2020";                  
 
 /* Loading note:
 - If you get the "Failed to connect to ESP32: Timed out... Connecting..." error when trying to upload code, it means that your ESP32 is not in flashing/uploading mode.
@@ -15,6 +15,7 @@ const String versionDate = "11/28/2020";
 */
 
 #include <WiFi.h>                                         // for webserver
+#include "arduino_secrets.h"
 #include <HTTPClient.h>                                   // for ThingSpeak
 #include "TimeLib.h"                                      // NTP
 
@@ -32,8 +33,6 @@ const long interval = 500;                                // 50 ms
 int blinky = LOW;                                         // blinking status
 
 // network information
-const char* ssid     = "OurCoop";
-const char* password = "4TheChickens!";
 unsigned long lostWiFi = 0;                               // for timing on when ESP32 loses signal to allow for reboot
 const long waitForWiFi = 30000;                           // wait time to see if WiFi gets connected before rebooting
 int initialLostWiFi = 0;                                  // flag to enter into wait time to reboot
@@ -64,7 +63,6 @@ String doorState = "";                                    // status of door for 
 String wifiSays = "";                                     // information from webpage
 
 // ThingSpeak
-String causeCodeKey = "EJRMOL3HEPPP8B3T";                 // key for lighting monitoring at ThingSpeak
 int causeCode = 0;                                        // cause code for door movement
 String causeCodeText = "";                                // cause code text
 String causeCodeStr = "";                                 // cause code string to send to thingspeak
@@ -87,6 +85,9 @@ const int doorMotorDown = 13;                             // connection to L298N
 const int doorMotorUp = 12;                               // connection to L298N H-Bridge, pin 4
 int doorGoingDown = 0;                                    // tracking door direction
 int doorGoingUp = 0;                                      // tracking door direction
+unsigned long motorTimer = 0;                             // timer for motor to help prevent it from running too long
+int timeTheMotor = 0;                                     // flag for timing motor movement
+const long motorThirtySec = 30000;                        // motor run time too long
 
 // LED connections and monitoring
 const int coopDoorClosedLed = 15;                         // door closed: green LED
@@ -253,6 +254,18 @@ void setup() {
   debugStatus(fromSetup);                                 // debugging
 }
 
+void motorTimerMonitor() {
+  if(timeTheMotor == 1) {
+    if ((millis() - motorTimer) > motorThirtySec) {
+      stopCoopDoor();                                     // stop the door
+      causeCode = 300;                                    // reference the readme for cause code
+      causeCodeText = "react: motor running more than 30 seconds";
+      motorTimer = 0;                                     // clear timer
+      timeTheMotor = 0;                                   // turn off timer
+    }
+  }
+}
+
 // reed debouncing
 void debounceBottomReed() {                               // door closed status
   bottomSwitchVal = digitalRead(bottomSwitchPin);         // reading 1
@@ -261,6 +274,7 @@ void debounceBottomReed() {                               // door closed status
     if (bottomSwitchVal == bottomSwitchVal2) {            // looking for consistent readings
       if(bottomSwitchVal != bottomSwitchState) {          // the door changed state
         bottomSwitchState = bottomSwitchVal;              // reset the door state
+        timeTheMotor = 0;                                 // turn off motor timer
         debugStatus(fromDebounceBottomReed);              // debugging
         lastDebounceTime = currentMillis;                 // reset reference
       }
@@ -277,6 +291,7 @@ void debounceTopReed() {                                  // door open status
     if (topSwitchVal == topSwitchVal2) {                  // looking for consistent readings
       if(topSwitchVal != topSwitchState) {                // the door changed state
         topSwitchState = topSwitchVal;                    // reset the door state
+        timeTheMotor = 0;                                 // turn off motor timer
         debugStatus(fromDebounceTopReed);                 // debugging
         lastDebounceTime = currentMillis;                 // reset reference
       }
@@ -295,12 +310,15 @@ void stopCoopDoor(){                                      // stop coop door
   doorGoingDown = 0;                                      // door not going down
   debounceBottomReed();                                   // door down status
   debounceTopReed();                                      // door up status
+  timeTheMotor = 0;                                       // turn off motor timer
   debugStatus(fromStopCoopDoor);                          // debugging
 }
 void closeCoopDoor() {                                    // close coop door
   debounceBottomReed();                                   // door down status
   debounceTopReed();                                      // door up status
   if (bottomSwitchVal != 1) {                             // is the door open?
+    timeTheMotor = 1;                                     // turn on the timer
+    motorTimer = millis();                                // set timer
     digitalWrite (doorMotorUp, LOW);                      // turn off up motor
     digitalWrite (doorMotorDown, HIGH);                   // turn on down motor
     doorGoingUp = 0;                                      // door not going up
@@ -318,6 +336,8 @@ void openCoopDoor() {                                     // open coop door
   debounceBottomReed();                                   // door down status
   debounceTopReed();                                      // door up status
   if (topSwitchVal != 1) {                                // is the door closed?
+    timeTheMotor = 1;                                     // turn on the timer
+    motorTimer = millis();                                // set timer
     digitalWrite (doorMotorUp, HIGH);                     // turn off up motor
     digitalWrite (doorMotorDown, LOW);                    // turn on down motor
     doorGoingUp = 1;                                      // door going up
@@ -882,8 +902,7 @@ void debugStatus(int fromCall) {
   }
 }
 
-void printLocalTime()
-{
+void printLocalTime(){
   struct tm timeinfo;                                     // gather time information
   if(!getLocalTime(&timeinfo)){
     Serial.println("Failed to obtain time");
@@ -938,4 +957,5 @@ void loop() {
   localButtons();                                         // local button presses
   automaticControl();                                     // monitor for transition between auto door mode and manual mode
   overrideButtons();                                      // override buttons inside case for rope correction
+  motorTimerMonitor();                                    // motor timer to prevent over running
 }

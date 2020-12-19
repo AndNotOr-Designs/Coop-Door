@@ -1,5 +1,10 @@
 # Coop-Door
 
+2.09 12/19/20
+- adds motor timer to prevent from running over 30 seconds (average up/down time = 21 seconds)
+- adds cause code for motor overdrive. Reference 2.05 - 11/22/2020
+- moves secret information over to arduino_secrets.h file
+
 2.08 11/28/20
 - changed to seperate ThingSpeak channel to help seperate the amount of data being sent
 - version 2.07 had thingspeak commented out when loaded - had that commented out becuase of testing, just forgot to uncomment...
@@ -32,6 +37,7 @@
 		225 = button says down 
 		250 = wifi says lower coop door 
 		275 = lower section, none of the above 
+		300 = motor running too long
 - removed comments for setting static IP:
 		// Set IP address
 		IPAddress local_IP(10, 4, 20, 240);                   // production IP address
