@@ -15,7 +15,7 @@ const String versionDate = "12/--/2020";
 */
 
 #include <WiFi.h>                                         // for webserver
-#include "arduino_secrets.h"
+#include <secureSettings.h>
 #include <HTTPClient.h>                                   // for ThingSpeak
 #include "TimeLib.h"                                      // NTP
 
@@ -627,7 +627,7 @@ void wifiProcessing() {
                 wifiSays = "lower coop door";
             } else if (header.indexOf("GET /5/on") >= 0) {// the stop coop door button was pressed
                 wifiSays = "stop coop door";                
-            } else if (header.indexOf("GET /4/on") >= 0) {// the raise coop door button was pressed
+            } else if (header.indexOf("GET /9/on") >= 0) {// the raise coop door button was pressed
                 wifiSays = "raise coop door";               
             } else if (header.indexOf("GET /7/on") >=0) { // the stop connection button was pressed
                 client.stop();                            // Close the connection
@@ -668,27 +668,27 @@ void wifiProcessing() {
 
             if (doorState=="open") {
               client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#EDAA3E\">" + doorState + "</span></p></h2>");
-//              client.println("<p><a href=\"/4/off\"><button class=\"button2\">door is open</button></a></p>");
+//              client.println("<p><a href=\"/9/off\"><button class=\"button2\">door is open</button></a></p>");
 //              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
 //              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
             } else if (doorState=="closed") {
               client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#12A148\">"+ doorState + "</span></p></h2>");
-//              client.println("<p><a href=\"/4/on\"><button class=\"button\">press to open door</button></a></p>");
+//              client.println("<p><a href=\"/9/on\"><button class=\"button\">press to open door</button></a></p>");
 //              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
 //              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is closed</button></a></p>");
             } else if (doorState=="moving") {
               client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#0EED63\">"+ doorState + "</span></p></h2>");
-//              client.println("<p><a href=\"/4/off\"><button class=\"button2\">door is moving</button></a></p>");
+//              client.println("<p><a href=\"/9/off\"><button class=\"button2\">door is moving</button></a></p>");
 //              client.println("<p><a href=\"/5/on\"><button class=\"button\">press to stop door</button></a></p>");
 //              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is moving</button></a></p>");
             } else {
               client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#0EED63\">"+ doorState + "</span></p></h2>");
-//              client.println("<p><a href=\"/4/on\"><button class=\"button\">press to open door</button></a></p>");
+//              client.println("<p><a href=\"/9/on\"><button class=\"button\">press to open door</button></a></p>");
 //              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
 //              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
             }
 
-            client.println("<p><a href=\"/4/on\"><button class=\"button\">open</button></a></p>");
+            client.println("<p><a href=\"/9/on\"><button class=\"button\">open</button></a></p>");
             client.println("<p><a href=\"/5/on\"><button class=\"button1\">stop</button></a></p>");
             client.println("<p><a href=\"/6/on\"><button class=\"button2\">close</button></a></p>");
 

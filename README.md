@@ -1,9 +1,10 @@
 # Coop-Door
 
-2.09 12/19/20
+2.09 12/20/20
 - adds motor timer to prevent from running over 30 seconds (average up/down time = 21 seconds)
 - adds cause code for motor overdrive. Reference 2.05 - 11/22/2020
-- moves secret information over to arduino_secrets.h file
+- moves secret information over to secureSettings.h file - located in libraries folder
+- changed wifi up button html code from button press #4 to button press #9, in an attempt to see if this is the issue with the door opening on it's own...
 
 2.08 11/28/20
 - changed to seperate ThingSpeak channel to help seperate the amount of data being sent
