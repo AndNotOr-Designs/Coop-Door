@@ -19,9 +19,9 @@ const String versionDate = "12/--/2020";
 #include <HTTPClient.h>                                   // for ThingSpeak
 #include "TimeLib.h"                                      // NTP
 
-boolean thingSpeakOff = false;                            // turning thingspeak off for testing purposes - no tweeting!
-boolean debugOn = false;                                  // debugging flag
-boolean superDebugOn = false;                             // verbose debugging does cause a delay in button push response
+boolean thingSpeakOff = true;                            // turning thingspeak off for testing purposes - no tweeting!
+boolean debugOn = true;                                  // debugging flag
+boolean superDebugOn = true;                             // verbose debugging does cause a delay in button push response
 boolean debugWithDelay = false;                           // adds 10 second delay to verbose debugging - causes issues with debouncing!
 
 volatile boolean autoOpenOn = true;                       // switch for tracking whether to listen to commands from master or not
@@ -251,17 +251,21 @@ void setup() {
   delay(debounceDelay + 50);                              // wait for delay to execute debounce
   debounceBottomReed();                                   // door closed status
   debounceTopReed();                                      // door open status
-  debugStatus(fromSetup);                                 // debugging
 }
 
 void motorTimerMonitor() {
   if(timeTheMotor == 1) {
+    if (debugOn == true) {
+    // motor timer
+      Serial.print("Motor Timing: motor auto stop in: ");
+      Serial.print((motorThirtySec - (millis() - motorTimer)) / 1000);
+      Serial.println(" seconds");
+    }
     if ((millis() - motorTimer) > motorThirtySec) {
       stopCoopDoor();                                     // stop the door
       causeCode = 300;                                    // reference the readme for cause code
       causeCodeText = "react: motor running more than 30 seconds";
       motorTimer = 0;                                     // clear timer
-      timeTheMotor = 0;                                   // turn off timer
     }
   }
 }
@@ -274,7 +278,6 @@ void debounceBottomReed() {                               // door closed status
     if (bottomSwitchVal == bottomSwitchVal2) {            // looking for consistent readings
       if(bottomSwitchVal != bottomSwitchState) {          // the door changed state
         bottomSwitchState = bottomSwitchVal;              // reset the door state
-        timeTheMotor = 0;                                 // turn off motor timer
         debugStatus(fromDebounceBottomReed);              // debugging
         lastDebounceTime = currentMillis;                 // reset reference
       }
@@ -291,7 +294,6 @@ void debounceTopReed() {                                  // door open status
     if (topSwitchVal == topSwitchVal2) {                  // looking for consistent readings
       if(topSwitchVal != topSwitchState) {                // the door changed state
         topSwitchState = topSwitchVal;                    // reset the door state
-        timeTheMotor = 0;                                 // turn off motor timer
         debugStatus(fromDebounceTopReed);                 // debugging
         lastDebounceTime = currentMillis;                 // reset reference
       }
@@ -311,6 +313,7 @@ void stopCoopDoor(){                                      // stop coop door
   debounceBottomReed();                                   // door down status
   debounceTopReed();                                      // door up status
   timeTheMotor = 0;                                       // turn off motor timer
+  motorTimer = 0;                                         // clear timer
   debugStatus(fromStopCoopDoor);                          // debugging
 }
 void closeCoopDoor() {                                    // close coop door
@@ -375,10 +378,10 @@ void operateCoopDoor() {                                  // time to operate the
       causeCodeText = "react: masterSays raise coop door";
     } else if (buttonSaysUp == 1) {
       causeCode = 125;
-      causeCodeText = "react: buttonSaysup raise coop door";
+      causeCodeText = "react: buttonSaysUp raise coop door";
     } else if (wifiSays == "raise coop door") {
       causeCode = 150;
-      causeCodeText = "react: wifiSays rasie coop door";
+      causeCodeText = "react: wifiSays raise coop door";
     } else {
       causeCode = 175;
       causeCodeText = "react: raise door unknown";
@@ -625,10 +628,13 @@ void wifiProcessing() {
             // process information from webpage button presses
             if (header.indexOf("GET /6/on") >= 0) {       // the lower coop door button was pressed
                 wifiSays = "lower coop door";
+                client.stop();                            // Close the connection
             } else if (header.indexOf("GET /5/on") >= 0) {// the stop coop door button was pressed
                 wifiSays = "stop coop door";                
+                client.stop();                            // Close the connection
             } else if (header.indexOf("GET /9/on") >= 0) {// the raise coop door button was pressed
                 wifiSays = "raise coop door";               
+                client.stop();                            // Close the connection
             } else if (header.indexOf("GET /7/on") >=0) { // the stop connection button was pressed
                 client.stop();                            // Close the connection
                 Serial.println("Client closed connection");
@@ -846,7 +852,9 @@ void debugStatus(int fromCall) {
       Serial.print("Door Motor: doorGoingDown: ");
       Serial.print(doorGoingDown);
       Serial.print(" doorGoingUp: ");
-      Serial.println(doorGoingUp);
+      Serial.print(doorGoingUp);
+      Serial.print(" | timeTheMotor= ");
+      Serial.println(timeTheMotor);
     // local buttons
       Serial.print("localUpButtonPressed: ");
       Serial.print(localUpButtonPressed);
