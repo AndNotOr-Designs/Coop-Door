@@ -247,6 +247,9 @@ void setup() {
 
   server.begin();                                         // open server
 
+  causeCode = 25;                                         // reference the readme for cause code
+  causeCodeText = "react: esp32 SETUP run";
+
   lastDebounceTime = millis();                            // start debounce tracking
   delay(debounceDelay + 50);                              // wait for delay to execute debounce
   debounceBottomReed();                                   // door closed status

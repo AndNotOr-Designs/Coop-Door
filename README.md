@@ -8,6 +8,7 @@
 	- learned that the code somewhat stops processing when there is a wifi connection established, thus added the next comment
 - adds client.stop() for each of the 3 pages that load based on button pressed (open/stop/close)
 - adds debugging info for the motor monitor
+- adds setup cause code. Reference 2.05 - 11/22/2020 for number
 
 2.08 11/28/20
 - changed to seperate ThingSpeak channel to help seperate the amount of data being sent
@@ -33,6 +34,7 @@
 - time stamp for door open/close
 - thingspeak communication
 - cause codes implementation
+		25   = Setup cause code
 		100 = master says raise door 
 		125 = button says up 
 		150 = wifi says raise coop door 
