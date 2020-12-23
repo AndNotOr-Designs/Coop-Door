@@ -9,6 +9,7 @@
 - adds client.stop() for each of the 3 pages that load based on button pressed (open/stop/close)
 - adds debugging info for the motor monitor
 - adds setup cause code. Reference 2.05 - 11/22/2020 for number
+- reordered if statements for web page reactions - put the up at the bottom
 
 2.08 11/28/20
 - changed to seperate ThingSpeak channel to help seperate the amount of data being sent

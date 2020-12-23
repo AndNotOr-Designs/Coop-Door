@@ -675,21 +675,21 @@ void wifiProcessing() {
             // Web Page Heading
             client.println("<body bgcolor=\"#000000\"><h1><p style=\"color:white\">Coop Door Control</p></h1>");
 
-            if (doorState=="open") {
-              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#EDAA3E\">" + doorState + "</span></p></h2>");
-//              client.println("<p><a href=\"/9/off\"><button class=\"button2\">door is open</button></a></p>");
-//              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
-//              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
+            if (doorState=="moving") {
+              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#0EED63\">"+ doorState + "</span></p></h2>");
+//              client.println("<p><a href=\"/9/off\"><button class=\"button2\">door is moving</button></a></p>");
+//              client.println("<p><a href=\"/5/on\"><button class=\"button\">press to stop door</button></a></p>");
+//              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is moving</button></a></p>");
             } else if (doorState=="closed") {
               client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#12A148\">"+ doorState + "</span></p></h2>");
 //              client.println("<p><a href=\"/9/on\"><button class=\"button\">press to open door</button></a></p>");
 //              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
 //              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is closed</button></a></p>");
-            } else if (doorState=="moving") {
-              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#0EED63\">"+ doorState + "</span></p></h2>");
-//              client.println("<p><a href=\"/9/off\"><button class=\"button2\">door is moving</button></a></p>");
-//              client.println("<p><a href=\"/5/on\"><button class=\"button\">press to stop door</button></a></p>");
-//              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is moving</button></a></p>");
+            } else if (doorState=="open") {
+              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#EDAA3E\">" + doorState + "</span></p></h2>");
+//              client.println("<p><a href=\"/9/off\"><button class=\"button2\">door is open</button></a></p>");
+//              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
+//              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
             } else {
               client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#0EED63\">"+ doorState + "</span></p></h2>");
 //              client.println("<p><a href=\"/9/on\"><button class=\"button\">press to open door</button></a></p>");
