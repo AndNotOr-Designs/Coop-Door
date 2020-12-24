@@ -6,7 +6,7 @@
 
 // version information - reference in README.md
 const float Coop_Door_Control_Version = 2.09;       
-const String versionDate = "12/--/2020";                  
+const String versionDate = "12/24/2020";                  
 
 /* Loading note:
 - If you get the "Failed to connect to ESP32: Timed out... Connecting..." error when trying to upload code, it means that your ESP32 is not in flashing/uploading mode.
@@ -19,9 +19,9 @@ const String versionDate = "12/--/2020";
 #include <HTTPClient.h>                                   // for ThingSpeak
 #include "TimeLib.h"                                      // NTP
 
-boolean thingSpeakOff = true;                            // turning thingspeak off for testing purposes - no tweeting!
-boolean debugOn = true;                                  // debugging flag
-boolean superDebugOn = true;                             // verbose debugging does cause a delay in button push response
+boolean thingSpeakOff = false;                            // turning thingspeak off for testing purposes - no tweeting!
+boolean debugOn = false;                                  // debugging flag
+boolean superDebugOn = false;                             // verbose debugging does cause a delay in button push response
 boolean debugWithDelay = false;                           // adds 10 second delay to verbose debugging - causes issues with debouncing!
 
 volatile boolean autoOpenOn = true;                       // switch for tracking whether to listen to commands from master or not
@@ -249,6 +249,7 @@ void setup() {
 
   causeCode = 25;                                         // reference the readme for cause code
   causeCodeText = "react: esp32 SETUP run";
+  sendToThingSpeak(fromSetup);                            // thingspeak
 
   lastDebounceTime = millis();                            // start debounce tracking
   delay(debounceDelay + 50);                              // wait for delay to execute debounce
@@ -757,6 +758,8 @@ void sendToThingSpeak(int status) {
       case doorClosed:                                      // thingspeak for door closed
         causeCodeStr +="&field4=";
         causeCodeStr +=String(closeTimeStamp);
+        break;
+      default:                                              // thingspeak no other case
         break;
     }
     int httpResponseCode = http.POST(causeCodeStr);         // post string to thingspeak

@@ -1,6 +1,6 @@
 # Coop-Door
 
-2.09 12/20/20
+2.09 12/24/20 deployed
 - adds motor timer to prevent from running over 30 seconds (average up/down time = 23 seconds)
 - adds cause code for motor overdrive. Reference 2.05 - 11/22/2020
 - moves secret information over to secureSettings.h file - located in libraries folder
