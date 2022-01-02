@@ -5,8 +5,8 @@
 // Programmer: "AVRISP mkll"
 
 // version information - reference in README.md
-const float Coop_Door_Control_Version = 2.09;       
-const String versionDate = "12/24/2020";                  
+const float Coop_Door_Control_Version = 2.10;       
+const String versionDate = "01/02/2022";                  
 
 /* Loading note:
 - If you get the "Failed to connect to ESP32: Timed out... Connecting..." error when trying to upload code, it means that your ESP32 is not in flashing/uploading mode.
@@ -69,7 +69,7 @@ String causeCodeStr = "";                                 // cause code string t
 const char* serverName = "http://api.thingspeak.com/update";
 
 // reed sensors
-const int bottomSwitchPin = 35;                           // bottom reed sensor
+const int bottomSwitchPin = 39;                           // bottom reed sensor //2.10 looks like pin 35 is bad on ESP32 mac:3a48 
 const int topSwitchPin = 34;                              // top reed sensor
 long lastDebounceTime = 0;                                // storage for timing debounces
 long debounceDelay = 100;                                 // 10 milliseconds
