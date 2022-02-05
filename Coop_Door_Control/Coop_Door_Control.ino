@@ -14,7 +14,6 @@ const String versionDate = "02/04/2022";
 - After you see the  “Connecting….” message in your Arduino IDE, release the finger from the “BOOT” button:
 */
 
-#include <WiFi.h>                                         // for webserver
 #include <secureSettings.h>
 #include <HTTPClient.h>                                   // for ThingSpeak
 #include "TimeLib.h"                                      // NTP
@@ -38,8 +37,7 @@ const long waitForWiFi = 30000;                           // wait time to see if
 int initialLostWiFi = 0;                                  // flag to enter into wait time to reboot
 int counter = 30;                                         // for serial printing of counter till reboot
 
-WiFiServer server(80);                                    // Set web server port number to 80
-WiFiClient client(80);                                    // set web client port number to 80
+//WiFiClient client(80);                                    // set web client port number to 80
 
 // time
 const char* ntpServer = "pool.ntp.org";                   // NTP server
@@ -63,7 +61,7 @@ String doorState = "";                                    // status of door for 
 String wifiSays = "";                                     // information from webpage
 
 // ThingSpeak
-int causeCode = 0;                                        // cause code for door movement
+int causeCode = 25;                                       // cause code for door movement
 String causeCodeText = "";                                // cause code text
 String causeCodeStr = "";                                 // cause code string to send to thingspeak
 const char* serverName = "http://api.thingspeak.com/update";
@@ -245,9 +243,6 @@ void setup() {
   printLocalTime();                                       // show current time
   Serial.println();
 
-  server.begin();                                         // open server
-
-  causeCode = 25;                                         // reference the readme for cause code
   causeCodeText = "react: esp32 SETUP run";
   sendToThingSpeak(fromSetup);                            // thingspeak
 
@@ -375,7 +370,7 @@ void doorMoving() {                                       // door is moving
   }
 }
 void operateCoopDoor() {                                  // time to operate the coop door somehow
-  if ((masterSays == "raise coop door") || (buttonSaysUp == 1) || (wifiSays == "raise coop door")) {
+  if ((masterSays == "raise coop door") || (buttonSaysUp == 1)) {
     debugStatus(fromOperateCoopDoorUp);                   // debugging
     if (masterSays == "raise coop door") {                // open door cause codes below
       causeCode = 100;
@@ -394,7 +389,7 @@ void operateCoopDoor() {                                  // time to operate the
     wifiSays = "";                                        // clear what the webpage says so only execute once
     openCoopDoor();                                       // open the door
   }
-  if ((masterSays == "lower coop door") || (buttonSaysDown == 1) || (wifiSays == "lower coop door")) {
+  if ((masterSays == "lower coop door") || (buttonSaysDown == 1)) {
     debugStatus(fromOperateCoopDoorDown);                 // debugging
     if (masterSays == "lower coop door") {                // close cause codes below
       causeCode = 200;
@@ -413,7 +408,7 @@ void operateCoopDoor() {                                  // time to operate the
     wifiSays = "";                                        // clear what the webpage says so only execute once
     closeCoopDoor();                                      // close the door
   }
-  if ((masterSays == "stop coop door")  || (buttonSaysStop == 1) || (wifiSays == "stop coop door")) {
+  if ((masterSays == "stop coop door")  || (buttonSaysStop == 1)) {
     debugStatus(fromOperateCoopDoorStop);                 // debugging
     masterSays = "";                                      // clear what the master says so only execute once
     wifiSays = "";                                        // clear what the webpage says so only execute once
@@ -610,132 +605,6 @@ void recWithEndMarker() {                                 // process strings fro
     } else {
       masterSays += rc;                                   // no end string yet, continue to build string
     }
-  }
-}
-void wifiProcessing() {
-  WiFiClient client = server.available();                 // Listen for incoming clients
-  if (client) {                                           // If a new client connects,
-    Serial.println("New Client.");                        // print a message out in the serial port
-    String currentLine = "";                              // make a String to hold incoming data from the client
-    while (client.connected()) {                          // loop while the client's connected
-      if (client.available()) {                           // if there's bytes to read from the client,
-        char c = client.read();                           // read a byte, then
-        Serial.write(c);                                  // print it out the serial monitor
-        header += c;
-        if (c == '\n') {                                  // if the byte is a newline character
-          if (currentLine.length() == 0) {                // if the current line is blank, you got two newline characters in a row. that's the end of the client HTTP request, so send a response:
-            client.println("HTTP/1.1 200 OK");            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)and a content-type so the client knows what's coming, then a blank line:
-            client.println("Content-type:text/html");
-            client.println("Connection: close");
-            client.println();
-            
-            // process information from webpage button presses
-            if (header.indexOf("GET /6/on") >= 0) {       // the lower coop door button was pressed
-                wifiSays = "lower coop door";
-                client.stop();                            // Close the connection
-            } else if (header.indexOf("GET /5/on") >= 0) {// the stop coop door button was pressed
-                wifiSays = "stop coop door";                
-                client.stop();                            // Close the connection
-            } else if (header.indexOf("GET /9/on") >= 0) {// the raise coop door button was pressed
-                wifiSays = "raise coop door";               
-                client.stop();                            // Close the connection
-            } else if (header.indexOf("GET /7/on") >=0) { // the stop connection button was pressed
-                client.stop();                            // Close the connection
-                Serial.println("Client closed connection");
-            } else if (header.indexOf("GET /8/on") >=0) { // engage automatic door control - listen to the master
-                wifiSays = "turn on automatic door control";
-            } else if (header.indexOf("GET /8/off") >=0) {// disengage automatic door control - ignore the master
-                wifiSays = "turn off automatic door control";
-            } 
-            
-            // Display the HTML web page
-            client.println("<!DOCTYPE html><html>");
-            client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-            client.println("<link rel=\"icon\" href=\"data:,\">");
-            // CSS to style the on/off buttons 
-            client.println("<style>html {font-family: arial; display: inline-block; margin: 0px auto; text-align: center;}");
-            client.println("hr.dashed {border-top: 2px dashed #641aa1; boarder-radius: 1px; width: 310px; margin-left: auto; margin-right: auto;}");
-            client.println("hr.solid {border-top: 5px solid #641aa1; boarder-radius: 2px; width: 350px; margin-left: auto; margin-right: auto;}");
-            client.println(".button {background-color: #EDAA3E; border-radius: 38px; border: none; padding: 14px 40px;"); // yellow
-            client.println("text-decoration: none; font-size: 25px; color: #641AA1; width: 300px; margin: 2px; cursor: pointer;}");
-            client.println(".button1 {background-color: #0EED63; border-radius: 38px; border: none; padding: 14px 40px;"); // red
-            client.println("text-decoration: none; font-size: 25px; color: #641AA1; width: 300px; margin: 2px; cursor: pointer;}");
-            client.println(".button2 {background-color: #12A148; border-radius: 38px; border: none; padding: 14px 40px;"); // blue
-            client.println("text-decoration: none; font-size: 25px; color: #641AA1; width: 300px; margin: 2px; cursor: pointer;}");
-            client.println(".button3 {background-color: #aa0000; border-radius: 19px; border: none; padding: 8px 40px;");
-            client.println("text-decoration: none; font-size: 15px; width: 200px; margin: 2px; cursor: pointer;}");
-            client.println(".button4 {background-color: #9426ED; border-radius: 42px; border: 2px solid #EDAA3E; color: #ffebff; padding: 8px 40px;");
-            client.println("text-decoration: none; font-size: 15px; color: #cccccc; font-weight:bold; width: 300px; margin: 2px; cursor: pointer}");
-            client.println(".button5 {background-color: #EDAA3E; border-radius: 42px; border: 2px solid #9426ED; color: #ffebff; padding: 8px 40px;");
-            client.println("text-decoration: none; font-size: 15px; color: #aa0000; width: 300px; margin: 2px; cursor: pointer}</style>");
-
-            // set page to refresh every CONTENT seconds  // removed in 2.07 - see readme.md
-            //client.println("<META HTTP-EQUIV=\"refresh\" CONTENT= \"15\"></head>");
-            client.println("</head>");
-            
-            // Web Page Heading
-            client.println("<body bgcolor=\"#000000\"><h1><p style=\"color:white\">Coop Door Control</p></h1>");
-
-            if (doorState=="moving") {
-              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#0EED63\">"+ doorState + "</span></p></h2>");
-//              client.println("<p><a href=\"/9/off\"><button class=\"button2\">door is moving</button></a></p>");
-//              client.println("<p><a href=\"/5/on\"><button class=\"button\">press to stop door</button></a></p>");
-//              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is moving</button></a></p>");
-            } else if (doorState=="closed") {
-              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#12A148\">"+ doorState + "</span></p></h2>");
-//              client.println("<p><a href=\"/9/on\"><button class=\"button\">press to open door</button></a></p>");
-//              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
-//              client.println("<p><a href=\"/6/off\"><button class=\"button2\">door is closed</button></a></p>");
-            } else if (doorState=="open") {
-              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#EDAA3E\">" + doorState + "</span></p></h2>");
-//              client.println("<p><a href=\"/9/off\"><button class=\"button2\">door is open</button></a></p>");
-//              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
-//              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
-            } else {
-              client.println("<h2><p style=\"color:#641AA1\">Door State: <span style=\"color:#0EED63\">"+ doorState + "</span></p></h2>");
-//              client.println("<p><a href=\"/9/on\"><button class=\"button\">press to open door</button></a></p>");
-//              client.println("<p><a href=\"/5/off\"><button class=\"button2\">stop not needed</button></a></p>");
-//              client.println("<p><a href=\"/6/on\"><button class=\"button\">press to close door</button></a></p>");
-            }
-
-            client.println("<p><a href=\"/9/on\"><button class=\"button\">open</button></a></p>");
-            client.println("<p><a href=\"/5/on\"><button class=\"button1\">stop</button></a></p>");
-            client.println("<p><a href=\"/6/on\"><button class=\"button2\">close</button></a></p>");
-
-            client.println("<hr class=\"dashed /\"><p></p>");
-            if (autoOpenOn == true) {
-              client.println("<a href=\"/8/off\"><button class=\"button4\">Automatic Mode</button>");
-            } else if (autoOpenOn == false) {
-              client.println("<a href=\"/8/on\"><button class=\"button5\">Manual Mode</button>");
-            }
-            client.println("<hr class=\"solid /\"><p></p>");
-            client.println("<p><img src=\"http://liskfamilycom.ipage.com/files/look_right.jpg\" style=\"width:50px\"  align=\"middle\">");
-            client.println("<a href=\"/7/on\"><button class=\"button3\">close connection</button>");
-            client.println("<img src=\"http://liskfamilycom.ipage.com/files/look_left.jpg\" style=\"width:50px\" align=\"middle\"></a></p>");
-            client.println("</body></html>");
-            client.println();                             // The HTTP response ends with another blank line
-            break;                                        // Break out of the while loop
-          } else {                                        // if you got a newline, then clear currentLine
-            currentLine = "";
-          }
-        } else if (c != '\r') {                           // if you got anything else but a carriage return character,
-          currentLine += c;                               // add it to the end of the currentLine
-        }
-      }
-      currentMillis = millis();                           // reset timing reference
-      recWithEndMarker();                                 // look for new instructions from master
-      masterSaysNewData();                                // process new instructions from master
-      sendToMaster();                                     // send responses back to master
-      coopDoorLed();                                      // LED feedback processing
-      operateCoopDoor();                                  // instructions to operate door
-      doorMoving();                                       // door is moving, look to stop
-      localButtons();                                     // local button presses
-      automaticControl();                                 // monitor for transition between auto door mode and manual mode
-    }
-    header = "";                                          // Clear the header variable
-    client.stop();                                        // Close the connection
-    Serial.println("Client disconnected.");
-    Serial.println("");
   }
 }
 
@@ -964,7 +833,6 @@ void loop() {
   recWithEndMarker();                                     // look for new instructions from master
   masterSaysNewData();                                    // process new instructions from master
   sendToMaster();                                         // send responses back to master
-  wifiProcessing();                                       // look for new connections on webpage
   coopDoorLed();                                          // LED feedback processing
   operateCoopDoor();                                      // instructions to operate door
   doorMoving();                                           // door is moving, look to stop

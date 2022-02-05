@@ -2,6 +2,7 @@
 3.01 02/04/22 testing
 - removes webserver info
 - adds Apple Home Kit connection with homeSpan
+- moves causeCode definition to integer definition instead of in setup
 
 
 2.09 12/24/20 deployed
