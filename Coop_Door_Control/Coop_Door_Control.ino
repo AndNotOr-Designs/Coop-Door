@@ -5,8 +5,8 @@
 // Programmer: "AVRISP mkll"
 
 // version information - reference in README.md
-const float Coop_Door_Control_Version = 2.10;       
-const String versionDate = "01/02/2022";                  
+const float Coop_Door_Control_Version = 3.01;       
+const String versionDate = "02/04/2022";                  
 
 /* Loading note:
 - If you get the "Failed to connect to ESP32: Timed out... Connecting..." error when trying to upload code, it means that your ESP32 is not in flashing/uploading mode.

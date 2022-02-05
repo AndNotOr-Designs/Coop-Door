@@ -1,4 +1,8 @@
 # Coop-Door
+3.01 02/04/22 testing
+- removes webserver info
+- adds Apple Home Kit connection with homeSpan
+
 
 2.09 12/24/20 deployed
 - adds motor timer to prevent from running over 30 seconds (average up/down time = 23 seconds)
