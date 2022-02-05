@@ -17,8 +17,9 @@ const String versionDate = "02/04/2022";
 #include <secureSettings.h>
 #include <HTTPClient.h>                                   // for ThingSpeak
 #include "TimeLib.h"                                      // NTP
+#include "HomeSpan.h"                                     // homeSpan connector
 
-boolean thingSpeakOff = false;                            // turning thingspeak off for testing purposes - no tweeting!
+boolean thingSpeakOff = true;                            // turning thingspeak off for testing purposes - no tweeting!
 boolean debugOn = false;                                  // debugging flag
 boolean superDebugOn = false;                             // verbose debugging does cause a delay in button push response
 boolean debugWithDelay = false;                           // adds 10 second delay to verbose debugging - causes issues with debouncing!
@@ -174,6 +175,20 @@ void setup() {
   Serial.begin(115200);                                   // serial monitor
   Serial2.begin(9600);                                    // master connection
 
+  homeSpan.begin(Category::GarageDoorOpeners,"HomeSpan CoopDoor");
+    new SpanAccessory();
+      new Service::AccessoryInformation();
+        new Characteristic::Manufacturer("And!Or Designs");
+        new Characteristic::SerialNumber("0001");
+        new Characteristic::Model("coopDoorXT101");
+        new Characteristic::FirmwareRevision("3.01");
+        new Characteristic::Identify();
+      new Service::HAPProtocolInformation();
+        new Characteristic::Version("1.1.0");
+      new Service::GarageDoorOpener();
+        new Characteristic::CurrentDoorState();
+        new Characteristic::TargetDoorState();
+      
 // serial monitor header
   Serial.println();
   Serial.println("/- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\\");
@@ -840,4 +855,5 @@ void loop() {
   automaticControl();                                     // monitor for transition between auto door mode and manual mode
   overrideButtons();                                      // override buttons inside case for rope correction
   motorTimerMonitor();                                    // motor timer to prevent over running
+  homeSpan.poll();
 }
