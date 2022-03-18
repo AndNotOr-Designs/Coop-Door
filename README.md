@@ -1,4 +1,6 @@
 # Coop-Door
+2.09 REPEAT 3/18/22
+- I restored back to 2.09 in git. Turns out the power supply in the master area was fried.
 
 2.09 12/24/20 deployed
 - adds motor timer to prevent from running over 30 seconds (average up/down time = 23 seconds)
