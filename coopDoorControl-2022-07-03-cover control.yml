@@ -1,0 +1,188 @@
+esphome:
+  name: "ardn-coop-door-dev"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esphome-Web-1B3A48"
+    password: "qLBTB6qCUPM4"
+    
+
+captive_portal:
+
+status_led:
+  pin:
+    number: GPIO5
+    inverted: true
+
+switch:
+# Error
+  - platform: gpio
+    name: "Coop Door Error"
+    pin: GPIO2
+    id: coopDoorError
+    icon: "mdi:garage-alert"
+# LED: open
+  - platform: gpio
+    name: "Door is Open"
+    pin: GPIO18
+    id: openLED
+    icon: "mdi:led-variant-outline"
+# LED: closed
+  - platform: gpio
+    name: "Door is Closed"
+    pin: GPIO15
+    id: closedLED
+    icon: "mdi:led-variant-outline"
+# LED: Moving
+  - platform: gpio
+    name: "Door is Moving"
+    pin: GPIO4
+    id: movingLED
+    icon: "mdi:led-variant-outline"
+# Motor: Open
+  - platform: gpio
+    name: "Opening the Door"
+    pin: GPIO13
+    id: openMotor
+    interlock: [closeMotor]
+    interlock_wait_time: 100ms
+    icon: "mdi:garage-open"
+# motor: Close
+  - platform: gpio
+    name: "Closing the Door"
+    pin: GPIO12
+    id: closeMotor
+    interlock: [openMotor]
+    interlock_wait_time: 100ms
+    icon: "mdi:garage"
+    
+binary_sensor:
+# sensor: open
+  - platform: gpio
+    entity_category: diagnostic
+    name: "door open"
+    pin: GPIO34
+    icon: "mdi:garage-open"
+    id: doorIsOpen
+    on_press:
+      then:
+        - switch.turn_off: openMotor
+        - switch.turn_off: movingLED
+        - switch.turn_on: openLED
+    on_release:
+      then:
+        - switch.turn_off: openLED
+        - switch.turn_on: movingLED
+# sensor: closed
+  - platform: gpio
+    entity_category: diagnostic
+    name: "door closed"
+    pin: GPIO32
+    icon: "mdi:garage"
+    id: doorIsClosed
+    on_press:
+      then:
+        - switch.turn_off: closeMotor
+        - switch.turn_off: movingLED
+        - switch.turn_on: closedLED
+    on_release:
+      then:
+        - switch.turn_off: closedLED
+        - switch.turn_on: movingLED
+# button: local open
+  - platform: gpio
+    name: "Local Open Button"
+    pin: GPIO23
+    id: localOpenButton
+    on_press:
+      then:
+        if:
+          condition:
+            - switch.is_off: openLED
+          then:
+            - cover.open: coopDoorControl
+# button: local stop
+  - platform: gpio
+    name: "Local Stop Button"
+    pin: GPIO22
+    id: localStopButton
+    on_press:
+      then:
+        - cover.stop: coopDoorControl
+#button: local close
+  - platform: gpio
+    name: "Local Close Button"
+    pin: GPIO21
+    id: localCloseButton
+    on_press:
+      then:
+        if:
+          condition:
+            - switch.is_off: closedLED
+          then:
+            - cover.close: coopDoorControl
+# button: local top bump
+  - platform: gpio
+    name: "Local Top Button"
+    pin: GPIO27
+    id: localTopButton
+    on_press:
+      then:
+        - switch.turn_on: openMotor
+    on_release:
+      then:
+        - switch.turn_off: openMotor
+# button: local bottom bump
+  - platform: gpio
+    name: "Local Bottom Button"
+    pin: GPIO33
+    id: localBottomButton
+    on_press:
+      then:
+        - switch.turn_on: closeMotor
+    on_release:
+      then:
+        - switch.turn_off: closeMotor
+
+cover:
+  - platform: endstop
+    name: "Coop Door"
+    id: coopDoorControl
+    max_duration: 25s
+
+    open_action:
+      - switch.turn_on: openMotor
+      - delay: 25s
+      - switch.turn_off: openMotor
+    open_duration: 20s
+    open_endstop: doorIsOpen
+    
+    close_action:
+      - switch.turn_on: closeMotor
+      - delay: 23s
+      - switch.turn_off: closeMotor
+    close_duration: 18s
+    close_endstop: doorIsClosed
+
+    stop_action:
+      - switch.turn_off: openMotor
+      - switch.turn_off: closeMotor
+      - switch.turn_off: movingLED
