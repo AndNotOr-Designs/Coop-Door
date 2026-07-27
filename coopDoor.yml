@@ -1,9 +1,14 @@
 # And!Or Designs
 # Coop Door
 # 2025-05-12 v1.2 - static IP + OTA platform fix + Wi-Fi tweaks
+# 2026-07-27 v1.3 - LED self-sync fix + wifi/api reboot_timeout tuning
 
 esphome:
   name: "ct-door-coop"
+  on_boot:
+    priority: -100          # run after sensors/switches are set up
+    then:
+      - script.execute: sync_door_leds
 
 esp32:
   board: esp32dev
@@ -15,6 +20,7 @@ logger:
 
 # Enable Home Assistant API
 api:
+  reboot_timeout: 15min
 
 # OTA configuration
 ota:
@@ -23,18 +29,21 @@ ota:
 wifi:
   ssid: !secret wifi_ssid_coop
   password: !secret wifi_password_coop
+#  reboot_timeout: 10min # having this in code causes unit to not reconnect on code load
 
   # Static IP setup
   manual_ip:
     static_ip: 10.4.20.40  # Your static IP
     gateway: 10.4.20.1     # Gateway (usually your router IP)
     subnet: 255.255.255.0    # Subnet mask (standard for home networks)
-    
+
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Esphome-Web-1B3A48"
     password: "qLBTB6qCUPM4"
 
+  fast_connect: true
+  post_connect_roaming: false
 captive_portal:
 
 status_led:
@@ -46,6 +55,34 @@ button:
 # restart
   - platform: restart
     name: "Restart Coop Door"
+
+script:
+# Keeps the three status LEDs in sync with the *current* state of the
+# endstop sensors, rather than relying only on press/release edges.
+# Called whenever either endstop sensor changes state, and once on boot,
+# so a reboot or a missed/bounced edge can't leave the LEDs stuck.
+  - id: sync_door_leds
+    then:
+      - if:
+          condition:
+            binary_sensor.is_on: doorIsOpen
+          then:
+            - switch.turn_off: movingLED
+            - switch.turn_off: closedLED
+            - switch.turn_on: openLED
+          else:
+            - if:
+                condition:
+                  binary_sensor.is_on: doorIsClosed
+                then:
+                  - switch.turn_off: movingLED
+                  - switch.turn_off: openLED
+                  - switch.turn_on: closedLED
+                else:
+                  - switch.turn_off: openLED
+                  - switch.turn_off: closedLED
+                  - switch.turn_on: movingLED
+
 switch:
 # Error
   - platform: gpio
@@ -87,7 +124,7 @@ switch:
     interlock: [openMotor]
     interlock_wait_time: 100ms
     icon: "mdi:garage"
-    
+
 binary_sensor:
 # sensor: open
   - platform: gpio
@@ -96,15 +133,12 @@ binary_sensor:
     pin: GPIO34
     icon: "mdi:garage-open"
     id: doorIsOpen
-    on_press:
+    filters:
+      - delayed_on_off: 100ms   # debounce - GPIO34 has no internal pull
+    on_state:
       then:
         - switch.turn_off: openMotor
-        - switch.turn_off: movingLED
-        - switch.turn_on: openLED
-    on_release:
-      then:
-        - switch.turn_off: openLED
-        - switch.turn_on: movingLED
+        - script.execute: sync_door_leds
 # sensor: closed
   - platform: gpio
     entity_category: diagnostic
@@ -112,15 +146,12 @@ binary_sensor:
     pin: GPIO32
     icon: "mdi:garage"
     id: doorIsClosed
-    on_press:
+    filters:
+      - delayed_on_off: 100ms   # debounce
+    on_state:
       then:
         - switch.turn_off: closeMotor
-        - switch.turn_off: movingLED
-        - switch.turn_on: closedLED
-    on_release:
-      then:
-        - switch.turn_off: closedLED
-        - switch.turn_on: movingLED
+        - script.execute: sync_door_leds
 # button: local open
   - platform: gpio
     name: "Local Open Button"
@@ -188,7 +219,7 @@ cover:
       - switch.turn_off: openMotor
     open_duration: 20s
     open_endstop: doorIsOpen
-    
+
     close_action:
       - switch.turn_on: closeMotor
       - delay: 23s
